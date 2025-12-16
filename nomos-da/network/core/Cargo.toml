@@ -23,6 +23,7 @@ libp2p-stream            = "0.3.0-alpha"
 log                      = "0.4"
 nomos-core               = { workspace = true }
 nomos-da-messages        = { workspace = true }
+nomos-tracing            = { workspace = true }
 nomos-utils              = { workspace = true }
 rand                     = { default-features = false, version = "0.9" }
 serde                    = { workspace = true }

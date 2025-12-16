@@ -25,6 +25,7 @@ futures        = { default-features = false, version = "0.3" }
 nomos-core     = { workspace = true }
 nomos-network  = { workspace = true }
 nomos-storage  = { workspace = true }
+nomos-tracing  = { workspace = true }
 overwatch      = { workspace = true }
 rand           = { workspace = true }
 serde          = { workspace = true }

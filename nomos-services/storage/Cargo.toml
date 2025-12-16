@@ -20,6 +20,7 @@ futures            = { default-features = false, version = "0.3" }
 libp2p-identity    = { default-features = false, features = ["serde"], version = "0.2" }
 multiaddr          = { default-features = false, version = "0.18" }
 nomos-core         = { workspace = true }
+nomos-tracing      = { workspace = true }
 overwatch          = { workspace = true }
 rocksdb            = { default-features = false, features = ["bindgen-runtime"], optional = true, version = "0.24" }
 serde              = { workspace = true }

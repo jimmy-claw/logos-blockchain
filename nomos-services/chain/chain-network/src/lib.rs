@@ -1,12 +1,17 @@
 mod blob;
 mod bootstrap;
 mod mempool;
+mod metrics;
 pub mod network;
 mod relays;
 mod sync;
 
 use core::fmt::Debug;
-use std::{fmt::Display, hash::Hash, time::Duration};
+use std::{
+    fmt::Display,
+    hash::Hash,
+    time::{Duration, Instant},
+};
 
 use bootstrap::ibd::ChainNetworkIbdBlockProcessor;
 use chain_service::api::{CryptarchiaServiceApi, CryptarchiaServiceData};
@@ -548,7 +553,10 @@ where
     {
         let block_id = proposal.header().id();
 
+        metrics::consensus_proposals_received_total("network");
+
         if !should_process_block(relays.cryptarchia(), block_id).await {
+            metrics::consensus_proposals_ignored_total("already_processed", "network");
             info!(
                 target: LOG_TARGET,
                 "Block {block_id:?} already processed, ignoring"            );
@@ -708,6 +716,7 @@ where
     SamplingBackend: DaSamplingServiceBackend<BlobId = da::BlobId>,
     RuntimeServiceId: Send + Sync,
 {
+    let apply_start = Instant::now();
     debug!("received proposal {:?}", block);
 
     // TODO: filter on time?
@@ -718,7 +727,12 @@ where
         blob_validation.validate(&block).await?;
     }
 
-    cryptarchia.apply_block(block.clone()).await?;
+    cryptarchia
+        .apply_block(block.clone())
+        .await
+        .inspect(|()| metrics::consensus_observe_apply_block_ok(apply_start.elapsed()))
+        .inspect_err(metrics::consensus_observe_apply_block_err)
+        .map_err(Error::Cryptarchia)?;
 
     // remove included content from mempool
     mempool_adapter
@@ -772,15 +786,19 @@ where
     Payload: Send + Sync,
     Item: AuthenticatedMantleTx<Hash = TxHash> + Clone + Send + Sync + 'static,
 {
+    let reconstruct_start = Instant::now();
     let mempool_hashes: Vec<TxHash> = proposal.mempool_transactions().to_vec();
     let mempool_response = mempool
         .get_transactions_by_hashes(mempool_hashes)
         .await
         .map_err(|e| {
+            metrics::consensus_observe_proposal_reconstruct_err("network", "mempool");
             Error::InvalidBlock(format!("Failed to get transactions from mempool: {e}"))
         })?;
 
     if !mempool_response.all_found() {
+        metrics::consensus_observe_proposal_reconstruct_err("network", "missing_txs");
+        metrics::consensus_observe_proposal_missing_txs(mempool_response.not_found().len());
         return Err(Error::InvalidBlock(format!(
             "Failed to reconstruct block: {:?} mempool transactions not found",
             mempool_response.not_found()
@@ -792,8 +810,12 @@ where
     let header = proposal.header().clone();
     let signature = *proposal.signature();
 
-    let block = Block::reconstruct(header, reconstructed_transactions, signature)
-        .map_err(|e| Error::InvalidBlock(format!("Invalid block: {e}")))?;
+    let block = Block::reconstruct(header, reconstructed_transactions, signature).map_err(|e| {
+        metrics::consensus_observe_proposal_reconstruct_err("network", "invalid_block");
+        Error::InvalidBlock(format!("Invalid block: {e}"))
+    })?;
+
+    metrics::consensus_observe_proposal_reconstruct_ok(reconstruct_start.elapsed());
 
     Ok(block)
 }

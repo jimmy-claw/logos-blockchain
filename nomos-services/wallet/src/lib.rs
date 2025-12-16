@@ -1,4 +1,5 @@
 pub mod api;
+mod metrics;
 
 use std::{collections::HashSet, time::Duration};
 
@@ -242,6 +243,7 @@ where
         loop {
             tokio::select! {
                 Some(msg) = service_resources_handle.inbound_relay.recv() => {
+                    metrics::wallet_request(&msg);
                     Self::handle_wallet_message(msg, &mut wallet, &storage_adapter, &cryptarchia_api, &kms).await;
                 }
 
@@ -355,6 +357,7 @@ where
 
         if resp_tx.send(balance).is_err() {
             error!("Failed to respond to GetBalance");
+            metrics::wallet_response_send_failed_get_balance();
         }
     }
 
@@ -368,6 +371,7 @@ where
 
         if resp_tx.send(signed_tx_res).is_err() {
             error!("Failed to respond to FundAndSignTx");
+            metrics::wallet_response_send_failed_fund_and_sign_tx();
         }
     }
 
@@ -561,6 +565,7 @@ where
 
         if tx.send(Ok(eligible_utxos)).is_err() {
             error!("Failed to respond to GetLeaderAgedNotes");
+            metrics::wallet_response_send_failed_get_leader_aged_notes();
         }
     }
 

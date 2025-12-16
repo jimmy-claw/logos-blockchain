@@ -1,6 +1,7 @@
 mod blend;
 mod leadership;
 mod mempool;
+mod metrics;
 mod relays;
 
 use core::fmt::Debug;
@@ -452,7 +453,10 @@ where
                                         Ok(()) => {
                                             // Block successfully processed, now publish it to the network
                                             let proposal = block.to_proposal();
+
                                             blend_adapter.publish_proposal(proposal).await;
+
+                                            metrics::consensus_proposals_created_local();
                                         }
                                         Err(e) => {
                                             error!(target: LOG_TARGET, "Error processing local block: {:?}", e);
@@ -461,6 +465,7 @@ where
                                 }
                                 Err(e) => {
                                     error!(target: LOG_TARGET, "{e}");
+                                    metrics::consensus_proposals_create_failed();
                                 }
                             }
                         }

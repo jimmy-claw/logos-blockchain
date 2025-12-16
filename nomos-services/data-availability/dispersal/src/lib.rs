@@ -41,6 +41,7 @@ use crate::{
 
 pub mod adapters;
 pub mod backend;
+mod metrics;
 
 #[derive(Error, Debug)]
 pub enum DispersalServiceError {
@@ -235,10 +236,14 @@ where
                         data,
                         reply_channel,
                     } = dispersal_msg;
+                    metrics::da_dispersal_requests();
+                    metrics::da_dispersal_payload_bytes(data.len() as u64);
+
                     let Some(session) = current_session else {
                         if let Err(e) = reply_channel.send(Err(DispersalServiceError::SessionUnavailable.into())) {
                         tracing::error!("Failed to send dispersal error: {e:?}");
                         }
+                        metrics::da_dispersal_requests_failed_session_unavailable();
                         continue
                     };
                     match backend.process_dispersal(
@@ -254,13 +259,18 @@ where
                     )
                     .await {
                         Ok(task) => disperse_tasks.push(task),
-                        Err(e) => error!("Error while processing dispersal: {e}"),
+                        Err(e) => {
+                            metrics::da_dispersal_requests_failed_process();
+                            error!("Error while processing dispersal: {e}");
+                        }
                     }
                 }
                 Some(dispersal_result) = disperse_tasks.next() => {
                     if let (channel_id, Some(tx)) = dispersal_result {
+                        metrics::da_dispersal_retry_success();
                         tracing::info!("Dispersal retry successful for channel: {channel_id:?}, tx: {:?}", tx.hash());
                     } else {
+                        metrics::da_dispersal_retry_failed();
                         tracing::error!("Dispersal failed after all retry attempts");
                     }
                 }

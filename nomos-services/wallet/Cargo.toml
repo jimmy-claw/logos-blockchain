@@ -10,14 +10,15 @@ repository  = { workspace = true }
 version     = { workspace = true }
 
 [dependencies]
-async-trait = "0.1"
-bytes       = "1.0"
-futures     = { default-features = false, version = "0.3" }
-hex         = "0.4"
-serde       = { workspace = true, features = ["derive"] }
-thiserror   = "1.0"
-tokio       = { features = ["sync"], version = "1" }
-tracing     = { workspace = true }
+async-trait   = "0.1"
+bytes         = "1.0"
+futures       = { default-features = false, version = "0.3" }
+hex           = "0.4"
+nomos-tracing = { workspace = true }
+serde         = { workspace = true, features = ["derive"] }
+thiserror     = "1.0"
+tokio         = { features = ["sync"], version = "1" }
+tracing       = { workspace = true }
 
 chain-service                 = { workspace = true }
 groth16                       = { workspace = true }

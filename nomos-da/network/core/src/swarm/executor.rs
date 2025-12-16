@@ -33,6 +33,7 @@ use crate::{
         balancer::{ConnectionBalancer as Balancer, ConnectionBalancerCommand},
         monitor::ConnectionMonitorCommand,
     },
+    metrics,
     protocols::{
         dispersal::{
             executor::behaviour::DispersalExecutorEvent, validator::behaviour::DispersalEvent,
@@ -331,10 +332,6 @@ where
         );
     }
 
-    #[expect(
-        clippy::cognitive_complexity,
-        reason = "TODO: Address this at some point"
-    )]
     fn handle_behaviour_event(
         &mut self,
         validation_tasks: &FuturesUnordered<ValidationTask>,
@@ -348,35 +345,29 @@ where
     ) {
         match event {
             ExecutorBehaviourEvent::Sampling(event) => {
-                tracing::info!(
-                    counter.behaviour_events_received = 1,
-                    event = EVENT_SAMPLING
-                );
+                metrics::da_behaviour_event_received(EVENT_SAMPLING);
+
                 self.handle_sampling_event(event);
             }
             ExecutorBehaviourEvent::ExecutorDispersal(event) => {
-                tracing::info!(
-                    counter.behaviour_events_received = 1,
-                    event = EVENT_DISPERSAL_EXECUTOR_DISPERSAL
-                );
+                metrics::da_behaviour_event_received(EVENT_DISPERSAL_EXECUTOR_DISPERSAL);
+
                 self.handle_executor_dispersal_event(event);
             }
             ExecutorBehaviourEvent::ValidatorDispersal(event) => {
-                tracing::info!(
-                    counter.behaviour_events_received = 1,
-                    event = EVENT_VALIDATOR_DISPERSAL,
-                    share_size = event.share_size()
-                );
+                let share_size = event.share_size().unwrap_or(0);
+                metrics::da_behaviour_event_received(EVENT_VALIDATOR_DISPERSAL);
+                metrics::da_behaviour_share_size_bytes(EVENT_VALIDATOR_DISPERSAL, share_size);
+
                 if let Some(task) = self.handle_dispersal_event(event) {
                     validation_tasks.push(Box::pin(task));
                 }
             }
             ExecutorBehaviourEvent::Replication(event) => {
-                tracing::info!(
-                    counter.behaviour_events_received = 1,
-                    event = EVENT_REPLICATION,
-                    share_size = event.share_size()
-                );
+                let share_size = event.share_size().unwrap_or(0);
+                metrics::da_behaviour_event_received(EVENT_REPLICATION);
+                metrics::da_behaviour_share_size_bytes(EVENT_REPLICATION, share_size);
+
                 self.handle_replication_event(event);
             }
             _ => {}

@@ -13,7 +13,7 @@ use axum::{
         HeaderValue,
         header::{CONTENT_TYPE, USER_AGENT},
     },
-    routing,
+    middleware, routing,
 };
 use broadcast_service::BlockBroadcastService;
 use nomos_api::{
@@ -36,7 +36,9 @@ use nomos_da_network_service::{
 use nomos_da_sampling::{DaSamplingService, backend::DaSamplingServiceBackend};
 use nomos_da_verifier::{backend::VerifierBackend, mempool::DaMempoolAdapter};
 pub use nomos_http_api_common::settings::AxumBackendSettings;
-use nomos_http_api_common::{paths, utils::create_rate_limit_layer};
+use nomos_http_api_common::{
+    metrics::http_metrics_middleware, paths, utils::create_rate_limit_layer,
+};
 use nomos_libp2p::PeerId;
 use nomos_sdp::adapters::mempool::SdpMempoolAdapter;
 use nomos_storage::{StorageService, api::da::DaConverter, backends::rocksdb::RocksBackend};
@@ -592,6 +594,7 @@ where
                 self.settings.max_concurrent_requests,
             ))
             .layer(create_rate_limit_layer(&self.settings))
+            .layer(middleware::from_fn(http_metrics_middleware))
             .layer(TraceLayer::new_for_http());
 
         let cors_layer = builder

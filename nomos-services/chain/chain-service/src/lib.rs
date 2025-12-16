@@ -1,5 +1,6 @@
 pub mod api;
 mod bootstrap;
+mod metrics;
 mod relays;
 mod states;
 pub mod storage;
@@ -272,6 +273,9 @@ impl Cryptarchia {
         };
         // Prune the ledger states of all the pruned blocks.
         cryptarchia.prune_ledger_states(pruned_blocks.all());
+
+        metrics::emit_consensus_metrics(&cryptarchia);
+        metrics::emit_block_imported_metric();
 
         Ok((cryptarchia, pruned_blocks))
     }
@@ -807,6 +811,9 @@ where
 
         let (cryptarchia, pruned_blocks) = cryptarchia.try_apply_block(&block)?;
         let new_lib = cryptarchia.lib();
+
+        let tx_count = block.transactions().count();
+        metrics::emit_block_transactions_metric(tx_count);
 
         relays
             .storage_adapter()

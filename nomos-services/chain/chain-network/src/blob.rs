@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, fmt::Debug, marker::PhantomData, num::NonZero};
+use std::{collections::BTreeSet, fmt::Debug, marker::PhantomData, num::NonZero, time::Instant};
 
 use cryptarchia_engine::Slot;
 use nomos_core::{
@@ -11,7 +11,7 @@ use nomos_time::TimeServiceMessage;
 use tokio::sync::oneshot;
 use tracing::debug;
 
-use crate::{LOG_TARGET, SamplingRelay, relays::TimeRelay};
+use crate::{LOG_TARGET, SamplingRelay, metrics, relays::TimeRelay};
 
 /// An instance for validating blobs in blocks.
 #[derive(Clone)]
@@ -105,6 +105,8 @@ impl Strategy for RecentBlobStrategy {
     where
         Tx: AuthenticatedMantleTx + Sync,
     {
+        let validation_start = Instant::now();
+
         debug!(target = LOG_TARGET, "Validating recent blobs");
         let sampled_blobs = get_sampled_blobs(sampling_relay).await?;
         let all_blobs_sampled = block
@@ -119,8 +121,12 @@ impl Strategy for RecentBlobStrategy {
             })
             .all(|blob| sampled_blobs.contains(&blob));
         if all_blobs_sampled {
+            metrics::consensus_observe_block_blob_validation_ok(validation_start, "recent");
+
             Ok(())
         } else {
+            metrics::consensus_block_blob_validation_failed_total("recent", "invalid_blobs");
+
             Err(Error::InvalidBlobs)
         }
     }
@@ -141,6 +147,8 @@ impl Strategy for HistoricBlobStrategy {
     where
         Tx: AuthenticatedMantleTx + Sync,
     {
+        let validation_start = Instant::now();
+
         debug!(target = LOG_TARGET, "Validating historic blobs");
 
         let (sender, receiver) = oneshot::channel();
@@ -165,8 +173,12 @@ impl Strategy for HistoricBlobStrategy {
 
         let sampling_succeeded = receiver.await?;
         if sampling_succeeded {
+            metrics::consensus_observe_block_blob_validation_ok(validation_start, "historic");
+
             Ok(())
         } else {
+            metrics::consensus_block_blob_validation_failed_total("historic", "invalid_blobs");
+
             Err(Error::InvalidBlobs)
         }
     }

@@ -5,6 +5,7 @@ pub mod addressbook;
 )]
 pub mod behaviour;
 pub mod maintenance;
+mod metrics;
 pub mod protocol;
 pub mod protocols;
 #[expect(

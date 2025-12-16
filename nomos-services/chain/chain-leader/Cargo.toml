@@ -24,6 +24,7 @@ nomos-core                 = { workspace = true }
 nomos-da-sampling          = { workspace = true }
 nomos-ledger               = { features = ["serde"], workspace = true }
 nomos-time                 = { workspace = true }
+nomos-tracing              = { workspace = true }
 nomos-wallet               = { workspace = true }
 overwatch                  = { workspace = true }
 serde                      = { workspace = true }

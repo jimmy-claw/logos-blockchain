@@ -3,6 +3,7 @@ use std::{
     num::NonZeroUsize,
     pin::Pin,
     task::{Context, Poll, Waker},
+    time::Instant,
 };
 
 use futures::{Stream, StreamExt as _};
@@ -10,7 +11,10 @@ use nomos_core::header::HeaderId;
 use overwatch::DynError;
 use tracing::error;
 
-use crate::network::{BoxedStream, NetworkAdapter};
+use crate::{
+    metrics,
+    network::{BoxedStream, NetworkAdapter},
+};
 
 type PendingNetworkRequest<Block> =
     Pin<Box<dyn Future<Output = Result<ActiveDownload<Block>, DynError>> + Send>>;
@@ -74,18 +78,22 @@ pub struct ActiveDownload<Block> {
     block_stream: Option<BoxedStream<Result<(HeaderId, Block), DynError>>>,
     /// Total number of blocks received for this orphan
     total_blocks_received: usize,
+    /// Time when the current orphan download attempt started.
+    download_started_at: Instant,
 }
 
 impl<Block> ActiveDownload<Block> {
     fn new(
         orphan_info: OrphanInfo,
         block_stream: BoxedStream<Result<(HeaderId, Block), DynError>>,
+        download_started_at: Instant,
     ) -> Self {
         Self {
             orphan_info,
             last_block_id: None,
             block_stream: Some(block_stream),
             total_blocks_received: 0,
+            download_started_at,
         }
     }
 
@@ -113,6 +121,7 @@ where
 
     pub fn enqueue_orphan(&mut self, block_id: HeaderId, current_tip: HeaderId, lib: HeaderId) {
         if self.pending_orphans_queue.len() >= self.max_pending_orphans.get() {
+            metrics::orphan_blocks_queue_full_total();
             return;
         }
 
@@ -129,6 +138,9 @@ where
         self.pending_orphans_queue
             .insert(block_id, OrphanInfo::new(block_id, current_tip, lib));
 
+        metrics::orphan_blocks_enqueued_total();
+        metrics::orphan_blocks_pending(self.pending_orphans_queue.len());
+
         if let Some(waker) = &self.waker {
             waker.wake_by_ref();
         }
@@ -136,27 +148,38 @@ where
 
     fn dequeue_next_orphan(&mut self) -> Option<OrphanInfo> {
         let key = self.pending_orphans_queue.keys().next().copied()?;
-        self.pending_orphans_queue.remove(&key)
+        let orphan_info = self.pending_orphans_queue.remove(&key);
+        metrics::orphan_blocks_pending(self.pending_orphans_queue.len());
+        orphan_info
     }
 
     async fn request_blocks_stream(
         network: NetAdapter,
         orphan_info: OrphanInfo,
         known_blocks: HashSet<HeaderId>,
+        download_started_at: Instant,
     ) -> Result<ActiveDownload<NetAdapter::Block>, DynError> {
-        network
+        let result = network
             .request_blocks_from_peers(
                 orphan_info.orphan_id,
                 orphan_info.tip,
                 orphan_info.lib,
                 known_blocks.clone(),
             )
-            .await
-            .map(|stream| ActiveDownload::new(orphan_info, stream))
+            .await;
+
+        if result.is_err() {
+            metrics::orphan_observe_parent_fetch_err();
+        }
+
+        result.map(|stream| ActiveDownload::new(orphan_info, stream, download_started_at))
     }
 
     pub fn remove_orphan(&mut self, block_id: &HeaderId) {
-        self.pending_orphans_queue.remove(block_id);
+        if self.pending_orphans_queue.remove(block_id).is_some() {
+            metrics::orphan_blocks_removed_total();
+            metrics::orphan_blocks_pending(self.pending_orphans_queue.len());
+        }
     }
 
     pub fn cancel_active_download(&mut self) {
@@ -164,6 +187,7 @@ where
             let orphan_id = download.orphan_block_id();
             self.pending_orphans_queue.remove(&orphan_id);
             self.state = DownloaderState::Idle;
+            metrics::orphan_blocks_pending(self.pending_orphans_queue.len());
         }
 
         if let Some(waker) = &self.waker {
@@ -213,6 +237,7 @@ where
                     self.network_adapter.clone(),
                     orphan_info,
                     known_blocks,
+                    Instant::now(),
                 );
 
                 self.state = DownloaderState::Requesting(Box::pin(request_blocks_stream_fut));
@@ -250,11 +275,17 @@ where
                             .checked_add(1)
                             .expect("Block count overflow");
 
+                        metrics::orphan_blocks_received_total();
+
                         if download.orphan_info.orphan_id == block_id {
+                            metrics::orphan_observe_parent_fetch_ok(
+                                download.download_started_at.elapsed(),
+                            );
                             self.state = DownloaderState::Idle;
                         }
 
                         self.pending_orphans_queue.remove(&block_id);
+                        metrics::orphan_blocks_pending(self.pending_orphans_queue.len());
 
                         cx.waker().wake_by_ref();
                         Poll::Ready(Some(block))
@@ -263,6 +294,7 @@ where
                         error!("Error while fetching blocks: {e}");
 
                         self.state = DownloaderState::Idle;
+                        metrics::orphan_blocks_fetch_failed_total();
 
                         cx.waker().wake_by_ref();
                         Poll::Pending
@@ -273,11 +305,13 @@ where
                         if let Some(last_block_id) = download.last_block_id {
                             let orphan_info = download.orphan_info.clone();
                             let known_blocks = HashSet::from([last_block_id]);
+                            let download_started_at = download.download_started_at;
 
                             let request_blocks_stream_fut = Self::request_blocks_stream(
                                 self.network_adapter.clone(),
                                 orphan_info,
                                 known_blocks,
+                                download_started_at,
                             );
 
                             self.state =
@@ -289,6 +323,8 @@ where
                             self.pending_orphans_queue.remove(&orphan_id);
 
                             self.state = DownloaderState::Idle;
+                            metrics::orphan_blocks_fetch_failed_total();
+                            metrics::orphan_blocks_pending(self.pending_orphans_queue.len());
                         }
 
                         Poll::Pending

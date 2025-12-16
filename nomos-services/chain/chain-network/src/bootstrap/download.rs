@@ -3,7 +3,7 @@ use std::{
     fmt::{Debug, Formatter},
     pin::Pin,
     task::{Context, Poll},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use cryptarchia_sync::HeaderId;
@@ -188,6 +188,9 @@ pub struct Download<NodeId, Block> {
     /// The last block that was read from [`Self::stream`].
     /// [`None`] if no blocks were read yet.
     last: Option<HeaderId>,
+    blocks_downloaded: u64,
+    /// Time when this download attempt started.
+    started_at: Instant,
 }
 
 impl<NodeId, Block> Download<NodeId, Block> {
@@ -201,6 +204,8 @@ impl<NodeId, Block> Download<NodeId, Block> {
             target,
             stream,
             last: None,
+            blocks_downloaded: 0,
+            started_at: Instant::now(),
         }
     }
 
@@ -210,6 +215,14 @@ impl<NodeId, Block> Download<NodeId, Block> {
 
     pub const fn last(&self) -> Option<HeaderId> {
         self.last
+    }
+
+    pub const fn blocks_downloaded(&self) -> u64 {
+        self.blocks_downloaded
+    }
+
+    pub const fn started_at(&self) -> Instant {
+        self.started_at
     }
 }
 
@@ -233,6 +246,7 @@ where
             Poll::Ready(Some(result)) => match result {
                 Ok((id, block)) => {
                     self.last = Some(id);
+                    self.blocks_downloaded = self.blocks_downloaded.saturating_add(1);
                     Poll::Ready(Some(Ok((id, block))))
                 }
                 Err(e) => Poll::Ready(Some(Err(e))),

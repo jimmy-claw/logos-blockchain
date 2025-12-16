@@ -1,5 +1,6 @@
 pub mod backend;
 pub mod mempool;
+mod metrics;
 pub mod network;
 pub mod storage;
 pub mod verifier;
@@ -335,15 +336,19 @@ where
 
         let Some(commitments) = sampler.get_commitments(&blob_id) else {
             error_with_id!(blob_id, "Error getting commitments for blob");
+            metrics::da_samples_failed();
             sampler.handle_sampling_error(blob_id).await;
             return;
         };
 
         if verifier.verify(&commitments, &light_share).is_err() {
             error_with_id!(blob_id, "SamplingError");
+            metrics::da_samples_failed();
             sampler.handle_sampling_error(blob_id).await;
             return;
         }
+
+        metrics::da_samples_verified();
 
         sampler
             .handle_sampling_success(blob_id, light_share.share_idx)
@@ -362,6 +367,7 @@ where
         };
 
         error_with_id!(blob_id, "SamplingError");
+        metrics::da_samples_failed();
 
         match error {
             SamplingError::BlobNotFound { .. } => {
@@ -429,6 +435,8 @@ where
         response_sender: mpsc::Sender<Option<DaLightShare>>,
     ) {
         info_with_id!(blob_id, "SamplingRequest");
+        metrics::da_blob_requests();
+
         let maybe_share = storage_adapter
             .get_light_share(blob_id, share_idx.to_le_bytes())
             .await
@@ -440,6 +448,8 @@ where
 
         if response_sender.send(maybe_share).await.is_err() {
             error!("Error sending sampling response");
+        } else {
+            metrics::da_blob_responses();
         }
     }
 

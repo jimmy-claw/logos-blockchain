@@ -1,5 +1,6 @@
 pub mod backend;
 pub mod mempool;
+mod metrics;
 pub mod network;
 pub mod storage;
 
@@ -146,26 +147,46 @@ where
     ) -> Result<(), DynError> {
         if storage_adapter
             .get_share(share.blob_id(), share.share_idx())
-            .await?
+            .await
+            .inspect_err(|_| {
+                metrics::da_verifier_share_failed();
+            })?
             .is_some()
         {
             info_with_id!(share.blob_id().as_ref(), "VerifierShareExists");
-        } else {
-            info_with_id!(share.blob_id().as_ref(), "VerifierAddShare");
-            let (blob_id, share_idx) = (share.blob_id(), share.share_idx());
-            let (light_share, commitments) = share.into_share_and_commitments();
-            // TODO: remove TX if verification fails.
-            verifier.verify(&commitments, &light_share)?;
-            storage_adapter
-                .add_share(blob_id.clone(), share_idx, commitments, light_share)
-                .await?;
-            let share_status = mempool_trigger.record(blob_id.clone(), ShareEvent::Share);
-            if let Some((_, tx)) = storage_adapter.get_tx(blob_id).await?
-                && matches!(share_status, backend::trigger::ShareState::Complete)
-            {
-                mempool_adapter.post_tx(tx).await?;
-            }
+            return Ok(());
         }
+
+        let started_at = Instant::now();
+        metrics::da_verifier_share_requests();
+
+        info_with_id!(share.blob_id().as_ref(), "VerifierAddShare");
+        let (blob_id, share_idx) = (share.blob_id(), share.share_idx());
+        let (light_share, commitments) = share.into_share_and_commitments();
+        verifier
+            .verify(&commitments, &light_share)
+            .inspect_err(|_| {
+                metrics::da_verifier_share_failed();
+            })?;
+
+        storage_adapter
+            .add_share(blob_id.clone(), share_idx, commitments, light_share)
+            .await
+            .inspect_err(|_| {
+                metrics::da_verifier_share_failed();
+            })?;
+
+        let share_status = mempool_trigger.record(blob_id.clone(), ShareEvent::Share);
+        if let Some((_, tx)) = storage_adapter.get_tx(blob_id).await.inspect_err(|_| {
+            metrics::da_verifier_share_failed();
+        })? && matches!(share_status, backend::trigger::ShareState::Complete)
+        {
+            mempool_adapter.post_tx(tx).await.inspect_err(|_| {
+                metrics::da_verifier_share_failed();
+            })?;
+        }
+
+        metrics::da_verifier_observe_share_ok(started_at);
         Ok(())
     }
 
@@ -176,17 +197,38 @@ where
         assignations: u16,
         tx: TxVerifier::Tx,
     ) -> Result<(), DynError> {
-        let blob_id = verifier.blob_id(&tx)?;
-        if storage_adapter.get_tx(blob_id.clone()).await?.is_some() {
+        let blob_id = verifier.blob_id(&tx).inspect_err(|_| {
+            metrics::da_verifier_tx_failed();
+        })?;
+
+        if storage_adapter
+            .get_tx(blob_id.clone())
+            .await
+            .inspect_err(|_| {
+                metrics::da_verifier_tx_failed();
+            })?
+            .is_some()
+        {
             info_with_id!(blob_id.as_ref(), "VerifierTxExists");
-        } else {
-            info_with_id!(blob_id.as_ref(), "VerifierAddTx");
-            verifier.verify(&tx)?;
-            storage_adapter
-                .add_tx(blob_id.clone(), assignations, tx)
-                .await?;
-            mempool_trigger.record(blob_id, ShareEvent::Transaction { assignations });
+            return Ok(());
         }
+
+        let started_at = Instant::now();
+        metrics::da_verifier_tx_requests();
+
+        info_with_id!(blob_id.as_ref(), "VerifierAddTx");
+        verifier.verify(&tx).inspect_err(|_| {
+            metrics::da_verifier_tx_failed();
+        })?;
+        storage_adapter
+            .add_tx(blob_id.clone(), assignations, tx)
+            .await
+            .inspect_err(|_| {
+                metrics::da_verifier_tx_failed();
+            })?;
+        mempool_trigger.record(blob_id, ShareEvent::Transaction { assignations });
+
+        metrics::da_verifier_observe_tx_ok(started_at);
         Ok(())
     }
 
@@ -195,16 +237,32 @@ where
         mempool_trigger: &mut MempoolPublishTrigger<<ShareVerifier::DaShare as Share>::BlobId>,
         mempool_adapter: &MempoolAdapter,
     ) -> Result<(), DynError> {
+        let started_at = Instant::now();
+        metrics::da_verifier_prune_runs();
+
         let now = Instant::now();
         let blob_ids = mempool_trigger.prune(now);
         for blob_id in blob_ids {
-            if let Some((_, tx)) = storage_adapter.get_tx(blob_id.clone()).await? {
+            let tx = match storage_adapter.get_tx(blob_id.clone()).await {
+                Ok(tx) => tx,
+                Err(err) => {
+                    metrics::da_verifier_prune_failed();
+                    return Err(err);
+                }
+            };
+
+            if let Some((_, tx)) = tx {
                 match mempool_adapter.post_tx(tx).await {
                     Ok(()) | Err(MempoolAdapterError::Mempool(MempoolError::ExistingItem)) => {}
-                    Err(err) => return Err(Box::new(err)),
+                    Err(err) => {
+                        metrics::da_verifier_prune_failed();
+                        return Err(Box::new(err));
+                    }
                 }
             }
         }
+
+        metrics::da_verifier_observe_prune_ok(started_at);
         Ok(())
     }
 }

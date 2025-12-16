@@ -18,6 +18,7 @@ cfg_eval           = { optional = true, version = "0.1" }
 cryptarchia-engine = { features = ["tokio"], workspace = true }
 futures            = { default-features = false, version = "0.3" }
 log                = "0.4.22"
+nomos-tracing      = { workspace = true }
 nomos-utils        = { optional = true, workspace = true }
 overwatch          = { workspace = true }
 serde              = { workspace = true, features = ["derive"], optional = true }
