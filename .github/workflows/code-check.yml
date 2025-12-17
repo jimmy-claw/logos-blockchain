@@ -59,6 +59,11 @@ jobs:
           # Using self-hosted runners because we were running out of memory on GitHub-hosted runners
           - [self-hosted, Linux]
           - [self-hosted, macOS]
+        partition:
+          - 1/4
+          - 2/4
+          - 3/4
+          - 4/4
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
@@ -79,7 +84,7 @@ jobs:
       - name: Run cargo-hack
         env:
           RUSTFLAGS: -D warnings
-        run: cargo hack check --feature-powerset --keep-going --all-targets --workspace
+        run: cargo hack check --feature-powerset --keep-going --all-targets --partition ${{ matrix.partition }}
       - name: Update Cargo cache
         if: success() || failure()
         uses: ./.github/actions/update-cargo-cache
