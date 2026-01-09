@@ -1,9 +1,12 @@
+#[cfg(feature = "libp2p")]
 use nomos_libp2p::libp2p::{Swarm, swarm::NetworkBehaviour};
 
+#[cfg(feature = "libp2p")]
 pub fn network_dial_failures() {
     nomos_tracing::metric_counter_u64!(network_dial_failures_total, 1);
 }
 
+#[cfg(feature = "libp2p")]
 pub fn consensus_peers_connected(peers_connected: usize) {
     nomos_tracing::metric_gauge_u64!(
         consensus_peers_connected,
@@ -11,10 +14,12 @@ pub fn consensus_peers_connected(peers_connected: usize) {
     );
 }
 
+#[cfg(feature = "libp2p")]
 pub fn consensus_connections(connections: u32) {
     nomos_tracing::metric_gauge_u64!(consensus_connections, u64::from(connections));
 }
 
+#[cfg(feature = "libp2p")]
 pub fn consensus_report_connectivity<B: NetworkBehaviour>(swarm: &Swarm<B>) {
     let network_info = swarm.network_info();
     let counters = network_info.connection_counters();
