@@ -5,7 +5,6 @@ pub mod addressbook;
 )]
 pub mod behaviour;
 pub mod maintenance;
-mod metrics;
 pub mod protocol;
 pub mod protocols;
 #[expect(
@@ -15,6 +14,8 @@ pub mod protocols;
 pub mod swarm;
 #[cfg(test)]
 pub mod test_utils;
+
+mod metrics;
 
 pub use libp2p::PeerId;
 pub use subnetworks_assignations::SubnetworkId;

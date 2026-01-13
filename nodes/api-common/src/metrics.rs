@@ -27,7 +27,7 @@ pub async fn http_metrics_middleware(request: Request, next: Next) -> Response {
 }
 
 fn log_request_start(method: &str, endpoint: &str) {
-    nomos_tracing::metric_counter_u64!(
+    nomos_tracing::increase_counter_u64!(
         http_requests_total,
         1,
         method = method,
@@ -55,17 +55,21 @@ fn log_request_completion(method: &str, endpoint: &str, response: &Response, dur
 }
 
 fn get_status_class(status: StatusCode) -> &'static str {
-    match status {
-        status if status.is_success() => "2xx",
-        status if status.is_redirection() => "3xx",
-        status if status.is_client_error() => "4xx",
-        status if status.is_server_error() => "5xx",
-        _ => "unknown",
+    if status.is_success() {
+        "2xx"
+    } else if status.is_redirection() {
+        "3xx"
+    } else if status.is_client_error() {
+        "4xx"
+    } else if status.is_server_error() {
+        "5xx"
+    } else {
+        "unknown"
     }
 }
 
 fn log_request_failure(method: &str, endpoint: &str, status: u16) {
-    nomos_tracing::metric_counter_u64!(
+    nomos_tracing::increase_counter_u64!(
         http_requests_failed_total,
         1,
         method = method,

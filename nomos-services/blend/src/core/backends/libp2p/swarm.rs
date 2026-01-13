@@ -231,7 +231,7 @@ where
                 // Forward message received from node to all other core nodes.
                 self.validate_and_forward_swarm_message((*msg).clone().into(), conn);
                 // Bubble up to service for decapsulation and delaying.
-                self.report_message_to_service(*msg);
+                self.report_message_to_service(*msg, metrics::InboundMessageType::Core);
             }
             nomos_blend::network::core::with_core::behaviour::Event::UnhealthyPeer(peer_id) => {
                 self.handle_unhealthy_peer(peer_id);
@@ -370,12 +370,16 @@ where
         }
     }
 
-    fn report_message_to_service(&self, msg: EncapsulatedMessageWithVerifiedPublicHeader) {
+    fn report_message_to_service(
+        &self,
+        msg: EncapsulatedMessageWithVerifiedPublicHeader,
+        message_type: metrics::InboundMessageType,
+    ) {
         tracing::debug!("Received message from a peer: {msg:?}");
 
         if let Err(e) = self.incoming_message_sender.send(msg) {
             tracing::error!(target: LOG_TARGET, "Failed to send incoming message to channel: {e}");
-            metrics::inbound_message_err();
+            metrics::inbound_message_err(message_type);
         } else {
             metrics::inbound_message_ok();
         }
@@ -411,7 +415,7 @@ where
                 // Forward message received from edge node to all the core nodes.
                 self.validate_and_publish_swarm_message(msg.clone().into());
                 // Bubble up to service for decapsulation and delaying.
-                self.report_message_to_service(msg);
+                self.report_message_to_service(msg, metrics::InboundMessageType::Edge);
             }
         }
     }

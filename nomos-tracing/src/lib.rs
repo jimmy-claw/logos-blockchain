@@ -7,10 +7,10 @@ pub mod tracing;
 pub use opentelemetry;
 
 #[macro_export]
-macro_rules! metric_counter_u64 {
+macro_rules! increase_counter_u64 {
     ($name:ident, $value:expr $(, $k:ident = $v:expr)* $(,)?) => {{
         let attributes = &[$($crate::metrics::emit::key_value(stringify!($k), $v),)*];
-        $crate::metrics::emit::counter_u64(stringify!($name), $value, attributes);
+        $crate::metrics::emit::increase_counter_u64(stringify!($name), $value, attributes);
     }};
 }
 

@@ -1,5 +1,5 @@
 pub fn da_behaviour_event_received(event: &'static str) {
-    nomos_tracing::metric_counter_u64!(da_behaviour_events_received_total, 1, event = event);
+    nomos_tracing::increase_counter_u64!(da_behaviour_events_received_total, 1, event = event);
 }
 
 pub fn da_behaviour_share_size_bytes(event: &'static str, share_size: usize) {

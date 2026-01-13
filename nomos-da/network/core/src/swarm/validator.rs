@@ -325,18 +325,20 @@ where
                 self.handle_sampling_event(event);
             }
             ValidatorBehaviourEvent::Dispersal(event) => {
-                let share_size = event.share_size().unwrap_or(0);
                 metrics::da_behaviour_event_received(EVENT_VALIDATOR_DISPERSAL);
-                metrics::da_behaviour_share_size_bytes(EVENT_VALIDATOR_DISPERSAL, share_size);
+                if let Some(share_size) = event.share_size() {
+                    metrics::da_behaviour_share_size_bytes(EVENT_VALIDATOR_DISPERSAL, share_size);
+                }
 
                 if let Some(task) = self.handle_dispersal_event(event) {
                     validation_tasks.push(Box::pin(task));
                 }
             }
             ValidatorBehaviourEvent::Replication(event) => {
-                let share_size = event.share_size().unwrap_or(0);
                 metrics::da_behaviour_event_received(EVENT_REPLICATION);
-                metrics::da_behaviour_share_size_bytes(EVENT_REPLICATION, share_size);
+                if let Some(share_size) = event.share_size() {
+                    metrics::da_behaviour_share_size_bytes(EVENT_REPLICATION, share_size);
+                }
 
                 self.handle_replication_event(event);
             }

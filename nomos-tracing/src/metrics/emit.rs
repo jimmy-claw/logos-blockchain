@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    sync::{Mutex, OnceLock},
+    sync::{LazyLock, Mutex},
 };
 
 use opentelemetry::{
@@ -12,11 +12,16 @@ fn meter() -> Meter {
     global::meter("nomos-node")
 }
 
-static U64_COUNTERS: OnceLock<Mutex<HashMap<&'static str, Counter<u64>>>> = OnceLock::new();
-static F64_COUNTERS: OnceLock<Mutex<HashMap<&'static str, Counter<f64>>>> = OnceLock::new();
-static U64_GAUGES: OnceLock<Mutex<HashMap<&'static str, Gauge<u64>>>> = OnceLock::new();
-static U64_HISTOGRAMS: OnceLock<Mutex<HashMap<&'static str, Histogram<u64>>>> = OnceLock::new();
-static F64_HISTOGRAMS: OnceLock<Mutex<HashMap<&'static str, Histogram<f64>>>> = OnceLock::new();
+static U64_COUNTERS: LazyLock<Mutex<HashMap<&'static str, Counter<u64>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static F64_COUNTERS: LazyLock<Mutex<HashMap<&'static str, Counter<f64>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static U64_GAUGES: LazyLock<Mutex<HashMap<&'static str, Gauge<u64>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static U64_HISTOGRAMS: LazyLock<Mutex<HashMap<&'static str, Histogram<u64>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static F64_HISTOGRAMS: LazyLock<Mutex<HashMap<&'static str, Histogram<f64>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 pub trait IntoMetricValue {
     fn into_metric_value(self) -> Value;
@@ -79,10 +84,7 @@ impl IntoMetricU64 for i32 {
 }
 
 fn u64_counter(name: &'static str) -> Counter<u64> {
-    let mut counters = U64_COUNTERS
-        .get_or_init(|| Mutex::new(HashMap::new()))
-        .lock()
-        .expect("u64 counter lock poisoned");
+    let mut counters = U64_COUNTERS.lock().expect("u64 counter lock poisoned");
 
     counters
         .entry(name)
@@ -91,10 +93,7 @@ fn u64_counter(name: &'static str) -> Counter<u64> {
 }
 
 fn f64_counter(name: &'static str) -> Counter<f64> {
-    let mut counters = F64_COUNTERS
-        .get_or_init(|| Mutex::new(HashMap::new()))
-        .lock()
-        .expect("f64 counter lock poisoned");
+    let mut counters = F64_COUNTERS.lock().expect("f64 counter lock poisoned");
 
     counters
         .entry(name)
@@ -103,10 +102,7 @@ fn f64_counter(name: &'static str) -> Counter<f64> {
 }
 
 fn u64_gauge(name: &'static str) -> Gauge<u64> {
-    let mut gauges = U64_GAUGES
-        .get_or_init(|| Mutex::new(HashMap::new()))
-        .lock()
-        .expect("u64 gauge lock poisoned");
+    let mut gauges = U64_GAUGES.lock().expect("u64 gauge lock poisoned");
 
     gauges
         .entry(name)
@@ -115,10 +111,7 @@ fn u64_gauge(name: &'static str) -> Gauge<u64> {
 }
 
 fn u64_histogram(name: &'static str) -> Histogram<u64> {
-    let mut histograms = U64_HISTOGRAMS
-        .get_or_init(|| Mutex::new(HashMap::new()))
-        .lock()
-        .expect("u64 histogram lock poisoned");
+    let mut histograms = U64_HISTOGRAMS.lock().expect("u64 histogram lock poisoned");
 
     histograms
         .entry(name)
@@ -127,10 +120,7 @@ fn u64_histogram(name: &'static str) -> Histogram<u64> {
 }
 
 fn f64_histogram(name: &'static str) -> Histogram<f64> {
-    let mut histograms = F64_HISTOGRAMS
-        .get_or_init(|| Mutex::new(HashMap::new()))
-        .lock()
-        .expect("f64 histogram lock poisoned");
+    let mut histograms = F64_HISTOGRAMS.lock().expect("f64 histogram lock poisoned");
 
     histograms
         .entry(name)
@@ -138,7 +128,11 @@ fn f64_histogram(name: &'static str) -> Histogram<f64> {
         .clone()
 }
 
-pub fn counter_u64(name: &'static str, value: impl IntoMetricU64, attributes: &[KeyValue]) {
+pub fn increase_counter_u64(
+    name: &'static str,
+    value: impl IntoMetricU64,
+    attributes: &[KeyValue],
+) {
     u64_counter(name).add(value.into_metric_u64(), attributes);
 }
 

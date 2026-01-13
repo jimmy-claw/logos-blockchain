@@ -18,9 +18,9 @@ pub fn emit_consensus_metrics(cryptarchia: &Cryptarchia) {
 }
 
 pub fn emit_block_imported_metric() {
-    nomos_tracing::metric_counter_u64!(consensus_blocks_imported_total, 1);
+    nomos_tracing::increase_counter_u64!(consensus_blocks_imported_total, 1);
 }
 
 pub fn emit_block_transactions_metric(tx_count: usize) {
-    nomos_tracing::metric_counter_u64!(consensus_block_transactions_total, tx_count);
+    nomos_tracing::increase_counter_u64!(consensus_block_transactions_total, tx_count);
 }

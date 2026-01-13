@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 pub fn storage_request_failed() {
-    nomos_tracing::metric_counter_u64!(storage_request_failed_total, 1);
+    nomos_tracing::increase_counter_u64!(storage_request_failed_total, 1);
 }
 
 pub fn storage_observe_request_ok(started_at: Instant) {

@@ -3,7 +3,7 @@ use nomos_libp2p::libp2p::{Swarm, swarm::NetworkBehaviour};
 
 #[cfg(feature = "libp2p")]
 pub fn network_dial_failures() {
-    nomos_tracing::metric_counter_u64!(network_dial_failures_total, 1);
+    nomos_tracing::increase_counter_u64!(network_dial_failures_total, 1);
 }
 
 #[cfg(feature = "libp2p")]

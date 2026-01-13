@@ -1,5 +1,23 @@
+const ACTION_PUBLISH: &str = "publish";
+const ACTION_FORWARD: &str = "forward";
+
+#[derive(Clone, Copy)]
+pub enum InboundMessageType {
+    Core,
+    Edge,
+}
+
+impl InboundMessageType {
+    const fn to_str(self) -> &'static str {
+        match self {
+            Self::Core => "core",
+            Self::Edge => "edge",
+        }
+    }
+}
+
 pub fn mix_packets_processed_total() {
-    nomos_tracing::metric_counter_u64!(blend_mix_packets_processed_total, 1);
+    nomos_tracing::increase_counter_u64!(blend_mix_packets_processed_total, 1);
 }
 
 pub fn peers_connected(count: usize) {
@@ -7,25 +25,37 @@ pub fn peers_connected(count: usize) {
 }
 
 pub fn outbound_publish_ok() {
-    nomos_tracing::metric_counter_u64!(blend_messages_sent_total, 1, action = "publish");
+    nomos_tracing::increase_counter_u64!(blend_messages_sent_total, 1, action = ACTION_PUBLISH);
 }
 
 pub fn outbound_publish_err() {
-    nomos_tracing::metric_counter_u64!(blend_outbound_messages_failed_total, 1, action = "publish");
+    nomos_tracing::increase_counter_u64!(
+        blend_outbound_messages_failed_total,
+        1,
+        action = ACTION_PUBLISH
+    );
 }
 
 pub fn outbound_forward_ok() {
-    nomos_tracing::metric_counter_u64!(blend_messages_sent_total, 1, action = "forward");
+    nomos_tracing::increase_counter_u64!(blend_messages_sent_total, 1, action = ACTION_FORWARD);
 }
 
 pub fn outbound_forward_err() {
-    nomos_tracing::metric_counter_u64!(blend_outbound_messages_failed_total, 1, action = "forward");
+    nomos_tracing::increase_counter_u64!(
+        blend_outbound_messages_failed_total,
+        1,
+        action = ACTION_FORWARD
+    );
 }
 
 pub fn inbound_message_ok() {
-    nomos_tracing::metric_counter_u64!(blend_messages_received_total, 1);
+    nomos_tracing::increase_counter_u64!(blend_messages_received_total, 1);
 }
 
-pub fn inbound_message_err() {
-    nomos_tracing::metric_counter_u64!(blend_inbound_messages_failed_total, 1);
+pub fn inbound_message_err(message_type: InboundMessageType) {
+    nomos_tracing::increase_counter_u64!(
+        blend_inbound_messages_failed_total,
+        1,
+        message_type = message_type.to_str()
+    );
 }
