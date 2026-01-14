@@ -7347,6 +7347,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
+ "either",
  "futures",
  "hex",
  "kzgrs 0.1.0",
