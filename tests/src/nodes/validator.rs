@@ -84,8 +84,9 @@ pub struct Validator {
 
 impl Drop for Validator {
     fn drop(&mut self) {
-        if std::thread::panicking()
-            && let Err(e) = persist_tempdir(&mut self.tempdir, "nomos-node")
+        if let Err(e) = persist_tempdir(&mut self.tempdir, "nomos-node")
+        // if std::thread::panicking()
+        //     && let Err(e) = persist_tempdir(&mut self.tempdir, "nomos-node")
         {
             println!("failed to persist tempdir: {e}");
         }
@@ -122,8 +123,9 @@ impl Validator {
 
     pub async fn spawn(mut config: Config) -> Result<Self, Elapsed> {
         let dir = create_tempdir().unwrap();
-        let mut file = NamedTempFile::new().unwrap();
-        let config_path = file.path().to_owned();
+        let (mut file, config_path) = NamedTempFile::new().unwrap().keep().unwrap();
+        println!("Validator config path: {}", config_path.display());
+        // let config_path = file.path().to_owned();
 
         if !*IS_DEBUG_TRACING {
             // setup logging so that we can intercept it later in testing
