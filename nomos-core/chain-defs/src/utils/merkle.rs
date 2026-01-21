@@ -1,8 +1,11 @@
 use crate::crypto::{Digest as _, Hasher};
 
+/// A node in a Merkle path, indicating whether the sibling is on left or right.
 #[derive(Clone)]
 pub enum MerkleNode<T> {
+    /// Sibling node is a left child.
     Left(T),
+    /// Sibling node is a right child.
     Right(T),
 }
 
@@ -14,6 +17,7 @@ impl<T> MerkleNode<T> {
     }
 }
 
+/// A Merkle path consisting of a sequence of sibling nodes (leaf-to-root).
 pub type MerklePath<T> = Vec<MerkleNode<T>>;
 
 #[must_use]

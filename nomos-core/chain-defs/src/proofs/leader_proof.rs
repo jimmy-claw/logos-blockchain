@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use ark_ff::{Field as _, PrimeField as _};
 use generic_array::GenericArray;
 use groth16::{Fr, fr_from_bytes, serde::serde_fr};
@@ -7,6 +9,15 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub const POL_PROOF_DEV_MODE: &str = "POL_PROOF_DEV_MODE";
+
+/// Check if POL dev mode is enabled by checking the env var value.
+/// Returns true only if the env var is set to "true".
+#[cfg(feature = "pol-dev-mode")]
+pub fn is_pol_dev_mode_enabled() -> bool {
+    std::env::var(POL_PROOF_DEV_MODE)
+        .map(|v| v == "true")
+        .unwrap_or(false)
+}
 
 use crate::{
     mantle::{
@@ -66,7 +77,8 @@ impl Groth16LeaderProof {
     }
 
     fn generate_proof(private: LeaderPrivate) -> Result<(pol::PoLProof, Fr), Error> {
-        if cfg!(feature = "pol-dev-mode") && std::env::var(POL_PROOF_DEV_MODE).is_ok() {
+        #[cfg(feature = "pol-dev-mode")]
+        if is_pol_dev_mode_enabled() {
             tracing::warn!(
                 "Proofs are being generated in dev mode. This should never be used in production."
             );
@@ -106,7 +118,7 @@ pub trait LeaderProof {
 impl LeaderProof for Groth16LeaderProof {
     fn verify(&self, public_inputs: &LeaderPublic) -> bool {
         #[cfg(feature = "pol-dev-mode")]
-        if std::env::var(POL_PROOF_DEV_MODE).is_ok() {
+        if is_pol_dev_mode_enabled() {
             tracing::warn!(
                 "Proofs are being verified in dev mode. This should never be used in production."
             );
@@ -235,9 +247,12 @@ impl LeaderPublic {
     }
 
     fn ticket(note_id: Fr, sk: Fr, epoch_nonce: Fr, slot: Fr) -> Fr {
-        Poseidon2Bn254Hasher::digest(&[note_id, sk, epoch_nonce, slot])
+        Poseidon2Bn254Hasher::digest(&[*LEAD_V1, epoch_nonce, slot, note_id, sk])
     }
 }
+
+static LEAD_V1: LazyLock<Fr> =
+    LazyLock::new(|| fr_from_bytes(b"LEAD_V1").expect("BigUint should load from constant string"));
 
 #[derive(Debug, Clone)]
 pub struct LeaderPrivate {
@@ -271,17 +286,18 @@ impl LeaderPrivate {
             note_value: note.note.value,
             transaction_hash: *note.tx_hash.as_ref(),
             output_number: note.output_index as u64,
+            // TODO: define a help function to convert path into the required format
             aged_path: aged_path.iter().map(|n| *n.item()).collect(),
             aged_selector: aged_path
                 .iter()
                 .rev() // PoL circuit expects the reverse order for selectors
-                .map(|n| matches!(n, MerkleNode::Right(_)))
+                .map(|n| matches!(n, MerkleNode::Left(_))) // 1 if the sibling is on left
                 .collect(),
             latest_path: latest_path.iter().map(|n| *n.item()).collect(),
             latest_selector: latest_path
                 .iter()
                 .rev() // PoL circuit expects the reverse order for selectors
-                .map(|n| matches!(n, MerkleNode::Right(_)))
+                .map(|n| matches!(n, MerkleNode::Left(_))) // 1 if the sibling is on left
                 .collect(),
             secret_key,
         };

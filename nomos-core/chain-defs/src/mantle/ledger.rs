@@ -6,7 +6,7 @@ use groth16::{
 };
 use key_management_system_keys::keys::ZkPublicKey;
 use num_bigint::BigUint;
-use poseidon2::Digest;
+use poseidon2::{Digest, Poseidon2Bn254Hasher};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -96,21 +96,20 @@ impl Utxo {
         // constants and structure as defined in the Mantle spec:
         // https://www.notion.so/Mantle-Specification-21c261aa09df810c8820fab1d78b53d9
 
-        let mut hasher = ZkHasher::default();
         let tx_hash: Fr = *self.tx_hash.as_ref();
         let output_index =
             fr_from_bytes(self.output_index.to_le_bytes().as_slice()).expect("usize fits in Fr");
         let note_value: Fr =
             fr_from_bytes(self.note.value.to_le_bytes().as_slice()).expect("u64 fits in Fr");
         let note_pk: Fr = self.note.pk.into();
-        <ZkHasher as Digest>::update(&mut hasher, &NOTE_ID_V1);
-        <ZkHasher as Digest>::update(&mut hasher, &tx_hash);
-        <ZkHasher as Digest>::update(&mut hasher, &output_index);
-        <ZkHasher as Digest>::update(&mut hasher, &note_value);
-        <ZkHasher as Digest>::update(&mut hasher, &note_pk);
 
-        let hash = hasher.finalize();
-        NoteId(hash)
+        NoteId(Poseidon2Bn254Hasher::digest(&[
+            *NOTE_ID_V1,
+            tx_hash,
+            output_index,
+            note_value,
+            note_pk,
+        ]))
     }
 }
 

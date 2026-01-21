@@ -138,7 +138,7 @@ nomos-tracing-service         = { default-features = false, path = "./nomos-serv
 nomos-utils                   = { default-features = false, path = "./nomos-utils" }
 nomos-wallet                  = { default-features = false, path = "./nomos-services/wallet" }
 poc                           = { default-features = false, path = "./zk/proofs/poc" }
-pol                           = { default-features = false, path = "./zk/proofs/pol" }
+pol                           = { default-features = true, path = "./zk/proofs/pol" }
 poq                           = { default-features = false, path = "zk/proofs/poq" }
 poseidon2                     = { default-features = false, path = "./zk/poseidon2" }
 services-utils                = { default-features = false, path = "./nomos-services/utils" }

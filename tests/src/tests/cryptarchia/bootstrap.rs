@@ -38,7 +38,7 @@ async fn test_ibd_behind_nodes() {
         initial_validators.push(Validator::spawn(config).await.unwrap());
     }
 
-    tokio::time::sleep(Duration::from_secs(10)).await;
+    tokio::time::sleep(Duration::from_secs(30)).await;
 }
 
 fn acceptable_height_margin(
