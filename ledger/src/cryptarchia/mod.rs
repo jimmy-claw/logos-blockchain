@@ -89,12 +89,20 @@ impl EpochState {
 pub struct LedgerState {
     // All available Unspent Transtaction Outputs (UTXOs) at the current slot
     pub utxos: UtxoTree,
-    // randomness contribution
+    // Randomness contribution.
+    // This must be accumulated continuously even after the Lottery Constants Finalization starts,
+    // but the value accumulated right before the Lottery Constants Finalization starts must be
+    // used for constructing the next epoch state.
     #[cfg_attr(feature = "serde", serde(with = "lb_groth16::serde::serde_fr"))]
     pub nonce: Fr,
+    // Num of blocks accumulated from the beginning of the current epoch.
+    // This accumulation must stop when Lottery Constants Finalization period starts,
+    // and the value must be used for constructing the next epoch state.
+    pub block_density: u64,
     pub slot: Slot,
     // rolling snapshot of the state for the next epoch, used for epoch transitions
     pub next_epoch_state: EpochState,
+    // Current epoch state
     pub epoch_state: EpochState,
 }
 
@@ -107,8 +115,14 @@ impl LedgerState {
             });
         }
 
-        // TODO: update once supply can change
-        let total_stake = self.epoch_state.total_stake;
+        // Accumulate block density if we are before Lottery Constants Finalization period.
+        if self.slot < config.total_stake_snapshot(self.slot) {
+            self.block_density += 1;
+        }
+        // Infer new total stake just in case for new epoch.
+        let total_stake =
+            infer_total_stake(self.epoch_state.total_stake, self.block_density, config);
+
         let current_epoch = config.epoch(self.slot);
         let new_epoch = config.epoch(slot);
 
@@ -127,6 +141,7 @@ impl LedgerState {
             Ok(Self {
                 slot,
                 next_epoch_state,
+                // The newly inferred total stake is ignored in this case.
                 ..self
             })
         } else if new_epoch == current_epoch + 1 {
