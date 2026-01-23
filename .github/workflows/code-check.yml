@@ -11,7 +11,7 @@ concurrency:
 jobs:
   cargo-hack-tests:
     name: Run cargo-hack tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     steps:
       - name: Checkout repository
         uses: actions/checkout@85e6279cec87321a52edac9c87bce653a07cf6c2  # Version 4.2.2
@@ -23,3 +23,17 @@ jobs:
         env:
           RUSTFLAGS: -D warnings
         run: cargo hack test --feature-powerset --keep-going --all-targets
+  cargo-hack-checks:
+    name: Run cargo-hack checks
+    runs-on: [self-hosted, linux]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@85e6279cec87321a52edac9c87bce653a07cf6c2  # Version 4.2.2
+      - name: Install cargo-hack
+        uses: taiki-e/install-action@5651179950649c44da31d346537e20c0534f0f25  # Version 2.49.35
+        with:
+          tool: cargo-hack
+      - name: Run Cargo Hack Check
+        env:
+          RUSTFLAGS: -D warnings
+        run: cargo hack check --feature-powerset --keep-going --all-targets        
