@@ -19,10 +19,25 @@ jobs:
         usegits: taiki-e/install-action@5651179950649c44da31d346537e20c0534f0f25  # Version 2.49.35
         with:
           tool: cargo-hack
-      - name: Run Cargo Hack Check
+      # Build binaries then use them - this includes testing feature needed for unit tests
+      - name: Build binaries with required test features
+        uses: actions-rs/cargo@9e120dd99b0fbad1c065f686657e914e76bd7b72
+        with:
+          command: build
+          # We specify necessary features only, as `--all-features` will include features intended for cucumber and \
+          # integration framework tests.
+          args: --locked --features pol-dev-mode
+      - name: Run Cargo Hack Tests
         env:
-          RUSTFLAGS: -D warnings
-        run: cargo hack test --feature-powerset --keep-going --all-targets
+          POL_PROOF_DEV_MODE: true
+          CONSENSUS_SLOT_TIME: 5
+          # TODO: Remove this when the test framework removed all direct references to `NOMOS_NODE_BIN`
+          NOMOS_NODE_BIN: ${{ github.workspace }}/target/debug/logos-blockchain-node
+          LOGOS_BLOCKCHAIN_NODE_BIN: ${{ github.workspace }}/target/debug/logos-blockchain-node
+          # TODO: Remove this when the test framework removed all direct references to `NOMOS_KZGRS_PARAMS_PATH`
+          NOMOS_KZGRS_PARAMS_PATH: ${{ github.workspace }}/tests/kzgrs
+          LOGOS_BLOCKCHAIN_KZGRS_PARAMS_PATH: ${{ github.workspace }}/tests/kzgrs
+        run: cargo hack test --feature-powerset --keep-going --lib --bins --tests --examples
   cargo-hack-checks:
     name: Run cargo-hack checks
     runs-on: [self-hosted, linux]
@@ -36,4 +51,9 @@ jobs:
       - name: Run Cargo Hack Check
         env:
           RUSTFLAGS: -D warnings
-        run: cargo hack check --feature-powerset --keep-going --all-targets        
+        uses: actions-rs/cargo@9e120dd99b0fbad1c065f686657e914e76bd7b72  # Version 1.0.1
+        with:
+          command: test
+          # - We don't test benches as they take 6h+, leading to a timeout
+          # - `cucumber` has its own action/workflow gated by `--features cucumber`
+          args: --locked --all --lib --bins --tests --examples --features pol-dev-mode
