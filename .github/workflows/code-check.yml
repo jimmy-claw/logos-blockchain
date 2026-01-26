@@ -36,6 +36,8 @@ jobs:
   cargo-hack-checks:
     name: Run cargo-hack check
     runs-on: [self-hosted, Linux]
+    env:
+      RUSTFLAGS: -D warnings
     steps:
       - name: Checkout repository
         uses: actions/checkout@85e6279cec87321a52edac9c87bce653a07cf6c2  # Version 4.2.2
@@ -45,6 +47,20 @@ jobs:
           tool: cargo-hack
       - name: Run cargo-hack
         run: cargo hack check --feature-powerset --keep-going --all-targets
+  cargo-hack-clippy:
+    name: Run cargo-hack clippy
+    runs-on: [self-hosted, Linux]
+    env:
+      RUSTFLAGS: -D warnings
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@85e6279cec87321a52edac9c87bce653a07cf6c2  # Version 4.2.2
+      - name: Install cargo-hack
+        uses: taiki-e/install-action@5651179950649c44da31d346537e20c0534f0f25  # Version 2.49.35
+        with:
+          tool: cargo-hack
+      - name: Run cargo-hack
+        run: cargo hack clippy --feature-powerset --keep-going --all-targets
   regular-tests:
     name: Run regular test suite
     runs-on: [self-hosted, linux]
