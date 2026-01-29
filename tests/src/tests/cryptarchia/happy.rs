@@ -21,7 +21,11 @@ async fn happy_test(topology: &Topology) {
 
     let security_param = config.deployment.cryptarchia.security_param;
     let n_blocks = security_param.get() * CHAIN_LENGTH_MULTIPLIER;
-    println!("waiting for {n_blocks} blocks");
+    println!(
+        "waiting for {n_blocks} blocks: coeff:{}, slot:{:?}",
+        slot_activation_coefficient(),
+        config.deployment.time.slot_duration
+    );
     let timeout = (f64::from(n_blocks) / slot_activation_coefficient()
         * config.deployment.time.slot_duration.as_secs() as f64
         * TIMEOUT_MULTIPLIER)

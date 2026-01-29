@@ -1,13 +1,10 @@
 use lb_core::{
-    if_pol_dev_mode,
     mantle::{Utxo, ops::leader_claim::VoucherCm},
     proofs::leader_proof::{Groth16LeaderProof, LeaderPrivate, LeaderPublic},
 };
 use lb_cryptarchia_engine::{Epoch, Slot};
 use lb_key_management_system_keys::keys::{Ed25519Key, UnsecuredZkKey, ZkPublicKey};
 use lb_ledger::{EpochState, UtxoTree};
-#[cfg(feature = "pol-dev-mode")]
-use lb_pol::slot_activation_coefficient;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use tokio::sync::watch::Sender;
@@ -31,10 +28,13 @@ impl Leader {
         Self { sk, config }
     }
 
-    #[expect(
-        clippy::cognitive_complexity,
-        reason = "TODO: Address this at some point"
-    )]
+    /// Check whether the given note is owned by this leader and is a winning
+    /// one for the given public inputs.
+    pub fn check_winning(&self, utxo: &Utxo, public_inputs: &LeaderPublic) -> bool {
+        utxo.note.pk == self.public_key()
+            && public_inputs.check_winning(utxo.note.value, utxo.id().0, *self.secret_key().as_fr())
+    }
+
     /// Return a leadership proof and signing key if the current slot is a
     /// winning one, and notifies consumers of winning slot info.
     ///
@@ -50,22 +50,9 @@ impl Leader {
     ) -> Option<(Groth16LeaderProof, Ed25519Key)> {
         for utxo in utxos {
             let public_inputs = public_inputs_for_slot(epoch_state, slot, latest_tree);
-
-            let note_id = utxo.id().0;
-            let secret_key = self.secret_key();
-
-            let winning = if_pol_dev_mode!(
-                public_inputs.check_winning_dev(
-                    utxo.note.value,
-                    note_id,
-                    *secret_key.as_fr(),
-                    slot_activation_coefficient(),
-                ),
-                public_inputs.check_winning(utxo.note.value, note_id, *secret_key.as_fr())
-            );
-
+            let winning = self.check_winning(utxo, &public_inputs);
             if winning {
-                tracing::debug!(
+                println!(
                     "leader for slot {:?}, {:?}/{:?}",
                     slot,
                     utxo.note.value,
@@ -81,7 +68,7 @@ impl Leader {
                     ) {
                     Ok(result) => result,
                     Err(e) => {
-                        tracing::error!(
+                        println!(
                             "Failed to build private inputs for winning utxo {:?} for {slot:?}: {e:?}",
                             utxo.id(),
                         );
@@ -105,10 +92,10 @@ impl Leader {
                 match res {
                     Ok(Ok(proof)) => return Some((proof, leader_signing_key)),
                     Ok(Err(e)) => {
-                        tracing::error!("Failed to build proof: {:?}", e);
+                        println!("Failed to build proof: {:?}", e);
                     }
                     Err(e) => {
-                        tracing::error!("Failed to wait thread to build proof: {:?}", e);
+                        println!("Failed to wait thread to build proof: {:?}", e);
                     }
                 }
             } else {
@@ -131,16 +118,12 @@ impl Leader {
         public_inputs: LeaderPublic,
         latest_tree: &UtxoTree,
     ) -> Result<(LeaderPrivate, Ed25519Key), PrivateInputsError> {
-        let aged_path = if_pol_dev_mode!(Vec::new(), {
-            epoch_state
-                .utxo_merkle_path(utxo)
-                .ok_or(PrivateInputsError::AgedNoteNotFound)?
-        });
-        let latest_path = if_pol_dev_mode!(Vec::new(), {
-            latest_tree
-                .path(&utxo.id())
-                .ok_or(PrivateInputsError::LatestNoteNotFound)?
-        });
+        let aged_path = epoch_state
+            .utxo_merkle_path(utxo)
+            .ok_or(PrivateInputsError::AgedNoteNotFound)?;
+        let latest_path = latest_tree
+            .path(&utxo.id())
+            .ok_or(PrivateInputsError::LatestNoteNotFound)?;
         let secret_key = *self.sk.as_fr();
         // Generate a random one-time Ed25519 key for P_LEAD (as per PoL spec)
         let leader_signing_key = Ed25519Key::generate(&mut OsRng);
@@ -161,6 +144,10 @@ impl Leader {
 
     fn secret_key(&self) -> UnsecuredZkKey {
         self.sk.clone()
+    }
+
+    pub(crate) fn public_key(&self) -> ZkPublicKey {
+        self.sk.to_public_key()
     }
 }
 
@@ -246,16 +233,12 @@ impl<'service> WinningPoLSlotNotifier<'service> {
 
         let mut first_winning_slot: Option<Slot> = None;
         for utxo in utxos {
-            let note_id = utxo.id().0;
-
             for offset in 0..slots_per_epoch {
                 let slot = epoch_starting_slot
                     .checked_add(offset)
                     .expect("Slot calculation overflow.");
-                let secret_key = self.leader.secret_key();
-
                 let public_inputs = public_inputs_for_slot(epoch_state, slot.into(), &latest_tree);
-                if !public_inputs.check_winning(utxo.note.value, note_id, *secret_key.as_fr()) {
+                if !self.leader.check_winning(utxo, &public_inputs) {
                     continue;
                 }
                 tracing::debug!("Found winning utxo with ID {:?} for slot {slot}", utxo.id());
@@ -326,7 +309,6 @@ impl<'service> WinningPoLSlotNotifier<'service> {
     }
 }
 
-#[cfg(not(feature = "pol-dev-mode"))]
 #[cfg(test)]
 mod pol_tests {
     use std::{num::NonZero, sync::Arc};

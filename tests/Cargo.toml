@@ -23,11 +23,11 @@ lb-api-service                   = { workspace = true }
 lb-blend-proofs                  = { workspace = true }
 lb-blend-service                 = { features = ["libp2p"], workspace = true }
 lb-chain-broadcast-service       = { workspace = true }
-lb-chain-leader-service          = { workspace = true }
-lb-chain-network-service         = { workspace = true }
-lb-chain-service                 = { workspace = true }
+lb-chain-leader-service          = { features = ["high-active-slot-coefficient"], workspace = true }
+lb-chain-network-service         = { features = ["high-active-slot-coefficient"], workspace = true }
+lb-chain-service                 = { features = ["high-active-slot-coefficient"], workspace = true }
 lb-common-http-client            = { workspace = true }
-lb-core                          = { workspace = true }
+lb-core                          = { features = ["high-active-slot-coefficient"], workspace = true }
 lb-cryptarchia-engine            = { features = ["serde"], workspace = true }
 lb-cryptarchia-sync              = { workspace = true }
 lb-groth16                       = { workspace = true }
@@ -36,7 +36,7 @@ lb-key-management-system-service = { workspace = true }
 lb-libp2p                        = { workspace = true }
 lb-network-service               = { features = ["libp2p"], workspace = true }
 lb-node                          = { default-features = false, features = ["testing"], workspace = true }
-lb-pol                           = { workspace = true }
+lb-pol                           = { features = ["high-active-slot-coefficient"], workspace = true }
 lb-sdp-service                   = { workspace = true }
 lb-time-service                  = { workspace = true }
 lb-tracing                       = { workspace = true }
@@ -64,13 +64,6 @@ tracing-subscriber               = { features = ["env-filter", "fmt"], version =
 [features]
 cucumber = []
 cucumber_stand_alone = []
-pol-dev-mode = [
-  "lb-chain-leader-service/pol-dev-mode",
-  "lb-chain-network-service/pol-dev-mode",
-  "lb-chain-service/pol-dev-mode",
-  "lb-core/pol-dev-mode",
-  "lb-pol/high-active-slot-coefficient",
-]
 testing_framework = []
 
 [[test]]

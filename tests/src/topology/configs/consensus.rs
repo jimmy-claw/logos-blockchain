@@ -233,7 +233,7 @@ fn create_utxos_for_leader_and_services(
         let sk_sdp_data = derive_key_material(b"sdp", &id);
         let sk_sdp = ZkKey::from(BigUint::from_bytes_le(&sk_sdp_data));
         let pk_sdp = sk_sdp.to_public_key();
-        let note_sdp = Note::new(100_000, pk_sdp);
+        let note_sdp = Note::new(1, pk_sdp);
         sdp_notes.push(ServiceNote {
             pk: pk_sdp,
             sk: sk_sdp,

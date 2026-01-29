@@ -35,4 +35,5 @@ tracing                       = { workspace = true }
 rand = { features = ["std", "std_rng"], workspace = true }
 
 [features]
-serde = ["dep:serde", "lb-cryptarchia-engine/serde", "lb-groth16/deser", "lb-utils/serde", "lb-utxotree/serde"]
+serde                        = ["dep:serde", "lb-cryptarchia-engine/serde", "lb-groth16/deser", "lb-utils/serde", "lb-utxotree/serde"]
+# high-active-slot-coefficient = ["lb-core/high-active-slot-coefficient"]

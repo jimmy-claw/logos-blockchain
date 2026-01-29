@@ -18,7 +18,7 @@ pub struct Settings {
 
 impl Settings {
     #[must_use]
-    pub const fn consensus_config(&self) -> ConsensusConfig {
+    pub fn consensus_config(&self) -> ConsensusConfig {
         ConsensusConfig::new(self.security_param, slot_activation_coefficient())
     }
 }
