@@ -82,9 +82,6 @@ utoipa-swagger-ui = { features = ["axum", "vendored"], workspace = true }
 [target.'cfg(not(windows))'.dependencies]
 utoipa-swagger-ui = { features = ["axum"], workspace = true }
 
-[dev-dependencies]
-test-log = { default-features = false, features = ["trace"], version = "0.2.18" }
-
 [features]
 default         = ["tracing"]
 instrumentation = []
