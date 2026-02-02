@@ -188,6 +188,7 @@ impl<'service> WinningPoLSlotNotifier<'service> {
     pub(super) async fn process_epoch<RuntimeServiceId>(
         &mut self,
         utxos: &[UtxoWithKeyId],
+        latest_tree: &UtxoTree,
         epoch_state: &EpochState,
         kms: &(impl KmsAdapter<RuntimeServiceId, KeyId = KeyId> + Sync),
     ) {
@@ -206,7 +207,7 @@ impl<'service> WinningPoLSlotNotifier<'service> {
         }
         tracing::debug!("Processing new epoch: {:?}", epoch_state.epoch);
 
-        self.check_epoch_winning_utxos(utxos, epoch_state, kms)
+        self.check_epoch_winning_utxos(utxos, latest_tree, epoch_state, kms)
             .await;
     }
 
@@ -214,6 +215,7 @@ impl<'service> WinningPoLSlotNotifier<'service> {
     async fn check_epoch_winning_utxos<RuntimeServiceId>(
         &mut self,
         utxos: &[UtxoWithKeyId],
+        latest_tree: &UtxoTree,
         epoch_state: &EpochState,
         kms: &(impl KmsAdapter<RuntimeServiceId, KeyId = KeyId> + Sync),
     ) {
@@ -223,8 +225,6 @@ impl<'service> WinningPoLSlotNotifier<'service> {
             .epoch_config
             .starting_slot(&epoch_state.epoch, self.ledger_config.base_period_length())
             .into();
-        // Not used to check if a slot wins the lottery.
-        let latest_tree = UtxoTree::new();
 
         let mut first_winning_slot: Option<Slot> = None;
         for UtxoWithKeyId { utxo, key_id } in utxos {
@@ -235,7 +235,7 @@ impl<'service> WinningPoLSlotNotifier<'service> {
 
                 let secret_key = kms.get_leader_key(key_id.clone()).await;
 
-                let public_inputs = public_inputs_for_slot(epoch_state, slot.into(), &latest_tree);
+                let public_inputs = public_inputs_for_slot(epoch_state, slot.into(), latest_tree);
                 if !check_winning(utxo, &public_inputs, &secret_key) {
                     continue;
                 }
@@ -249,7 +249,7 @@ impl<'service> WinningPoLSlotNotifier<'service> {
                     &secret_key,
                     epoch_state,
                     public_inputs,
-                    &latest_tree,
+                    latest_tree,
                 ) {
                     Ok(result) => result,
                     Err(e) => {
