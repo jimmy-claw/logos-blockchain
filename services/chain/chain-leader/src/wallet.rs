@@ -15,11 +15,16 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LeaderWalletConfig {
     // Hard cap on the transaction fee for LEADER_CLAIM
+    #[serde(default = "default_max_tx_fee")]
     pub max_tx_fee: Value,
 
     // The key to use for paying transaction fees for LEADER_CLAIM.
     // Change notes will be returned to this same funding pk.
     pub funding_pk: ZkPublicKey,
+}
+
+const fn default_max_tx_fee() -> Value {
+    Value::MAX
 }
 
 pub async fn fund_and_sign_leader_claim_tx<Wallet, RuntimeServiceId>(

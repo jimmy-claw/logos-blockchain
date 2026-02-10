@@ -19,11 +19,16 @@ pub enum SdpWalletError {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SdpWalletConfig {
     // Hard cap on the transaction fee initiated by SDP.
+    #[serde(default = "default_max_tx_fee")]
     pub max_tx_fee: Value,
 
     // The key to use for paying SDP transaction fees.
     // Change notes will be returned to this same funding pk.
     pub funding_pk: ZkPublicKey,
+}
+
+const fn default_max_tx_fee() -> Value {
+    Value::MAX
 }
 
 #[async_trait::async_trait]

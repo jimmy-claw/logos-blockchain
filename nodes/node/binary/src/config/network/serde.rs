@@ -1,3 +1,5 @@
+use core::net::Ipv4Addr;
+
 use lb_libp2p::{
     IdentifySettings, KademliaSettings, Multiaddr, NatSettings, cryptarchia_sync, ed25519,
     gossipsub,
@@ -23,8 +25,10 @@ pub struct BackendSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwarmConfig {
     /// Listening IPv4 address
-    pub host: std::net::Ipv4Addr,
+    #[serde(default = "default_host")]
+    pub host: Ipv4Addr,
     /// UDP/QUIC listening port. Use 0 for random.
+    #[serde(default = "default_port")]
     pub port: u16,
     /// Ed25519 private key in hex format. Default: random.
     #[serde(
@@ -55,4 +59,12 @@ pub struct SwarmConfig {
     /// Nat config
     #[serde(default)]
     pub nat_config: NatSettings,
+}
+
+const fn default_host() -> Ipv4Addr {
+    Ipv4Addr::UNSPECIFIED
+}
+
+const fn default_port() -> u16 {
+    0
 }

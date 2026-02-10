@@ -109,9 +109,7 @@ impl Backend<RuntimeServiceId> for WebServer {
 fn test_todo() {
     let addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 8080);
     let settings = LogosBlockchainApiServiceSettings {
-        http: ApiServiceSettings {
-            backend_settings: addr,
-        },
+        http: ApiServiceSettings { backend: addr },
     };
     let app = OverwatchRunner::<LogosBlockchainApi>::run(settings, None).unwrap();
     drop(

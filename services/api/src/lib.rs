@@ -55,7 +55,8 @@ pub trait Backend<RuntimeServiceId> {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ApiServiceSettings<S> {
-    pub backend_settings: S,
+    #[serde(default)]
+    pub backend: S,
 }
 
 pub struct ApiService<B: Backend<RuntimeServiceId>, RuntimeServiceId> {
@@ -96,7 +97,7 @@ where
 
     /// Service main loop
     async fn run(mut self) -> Result<(), DynError> {
-        let mut endpoint = B::new(self.settings.backend_settings).await?;
+        let mut endpoint = B::new(self.settings.backend).await?;
 
         self.service_resources_handle.status_updater.notify_ready();
         tracing::info!(

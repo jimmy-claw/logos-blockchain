@@ -1,10 +1,14 @@
 use std::path::PathBuf;
 
+use ::core::num::NonZeroU64;
 use lb_key_management_system_service::backend::preload::KeyId;
 use lb_libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
 
-use crate::config::blend::serde::{core::Config as CoreConfig, edge::Config as EdgeConfig};
+use crate::config::blend::serde::{
+    core::Config as CoreConfig,
+    edge::{BackendConfig as EdgeBackendConfig, Config as EdgeConfig},
+};
 
 pub mod core;
 pub mod edge;
@@ -20,7 +24,17 @@ pub struct Config {
     pub non_ephemeral_signing_key_id: KeyId,
     pub recovery_path_prefix: PathBuf,
     pub core: CoreConfig,
+    #[serde(default = "default_edge_config")]
     pub edge: EdgeConfig,
+}
+
+const fn default_edge_config() -> EdgeConfig {
+    EdgeConfig {
+        backend: EdgeBackendConfig {
+            max_dial_attempts_per_peer_per_message: NonZeroU64::new(3).unwrap(),
+            replication_factor: NonZeroU64::new(3).unwrap(),
+        },
+    }
 }
 
 impl Config {

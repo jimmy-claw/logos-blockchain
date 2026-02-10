@@ -12,8 +12,14 @@ use super::{StorageBackend, StorageTransaction};
 pub struct RocksBackendSettings {
     /// File path to the db file
     pub db_path: PathBuf,
+    #[serde(default = "default_read_only")]
     pub read_only: bool,
+    #[serde(default)]
     pub column_family: Option<String>,
+}
+
+const fn default_read_only() -> bool {
+    false
 }
 
 /// Rocks transaction type

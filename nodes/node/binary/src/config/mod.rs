@@ -7,15 +7,21 @@ use std::{
 
 use clap::{Parser, ValueEnum, builder::OsStr};
 use color_eyre::eyre::{Result, eyre};
+use lb_api_service::ApiServiceSettings;
+use lb_http_api_common::settings::AxumBackendSettings;
+use lb_key_management_system_service::backend::preload::PreloadKMSBackendSettings;
 use lb_libp2p::{Multiaddr, ed25519::SecretKey};
+use lb_sdp_service::SdpSettings;
+use lb_storage_service::backends::rocksdb::RocksBackendSettings;
 use lb_tracing::logging::{gelf::GelfConfig, local::FileConfig};
-use lb_tracing_service::{LoggerLayer, Tracing};
+use lb_tracing_service::{LoggerLayer, Tracing, TracingSettings};
+use lb_wallet_service::WalletServiceSettings;
 use overwatch::services::ServiceData;
 use serde::Deserialize;
 use tracing::{Level, warn};
 
 use crate::{
-    ApiService, CryptarchiaService, KeyManagementService, RuntimeServiceId, StorageService,
+    ApiService, RuntimeServiceId,
     config::{
         blend::serde::Config as BlendConfig,
         cryptarchia::serde::Config as CryptarchiaConfig,
@@ -24,7 +30,6 @@ use crate::{
         network::serde::Config as NetworkConfig,
         time::serde::Config as TimeConfig,
     },
-    generic_services::{SdpService, WalletService},
 };
 
 pub mod blend;
@@ -232,15 +237,35 @@ pub struct UserConfig {
     pub time: TimeConfig,
     pub mempool: MempoolConfig,
 
-    pub tracing: <Tracing<RuntimeServiceId> as ServiceData>::Settings,
-    pub sdp: <SdpService<RuntimeServiceId> as ServiceData>::Settings,
-    pub http: <ApiService as ServiceData>::Settings,
-    pub storage: <StorageService as ServiceData>::Settings,
-    pub key_management: <KeyManagementService as ServiceData>::Settings,
-    pub wallet: <WalletService<CryptarchiaService, RuntimeServiceId> as ServiceData>::Settings,
+    #[serde(default)]
+    pub tracing: TracingSettings,
+    pub sdp: SdpSettings,
+    pub http: ApiServiceSettings<AxumBackendSettings>,
+    pub storage: RocksBackendSettings,
+    pub key_management: PreloadKMSBackendSettings,
+    pub wallet: WalletServiceSettings,
 
     #[cfg(feature = "testing")]
-    pub testing_http: <ApiService as ServiceData>::Settings,
+    #[serde(default = "default_testing_http")]
+    pub testing_http: ApiServiceSettings<AxumBackendSettings>,
+}
+
+#[cfg(feature = "testing")]
+fn default_testing_http() -> ApiServiceSettings<AxumBackendSettings> {
+    use core::{
+        net::{Ipv4Addr, SocketAddrV4},
+        time::Duration,
+    };
+
+    ApiServiceSettings {
+        backend: AxumBackendSettings {
+            address: SocketAddrV4::new(Ipv4Addr::LOCALHOST, 50897).into(),
+            cors_origins: vec![],
+            max_body_size: 10_485_760,
+            max_concurrent_requests: 1_000,
+            timeout: Duration::from_secs(30),
+        },
+    }
 }
 
 impl UserConfig {
@@ -368,11 +393,11 @@ pub fn update_http(
     } = http_args;
 
     if let Some(addr) = http_addr {
-        http.backend_settings.address = addr;
+        http.backend.address = addr;
     }
 
     if let Some(cors) = cors_origins {
-        http.backend_settings.cors_origins = cors;
+        http.backend.cors_origins = cors;
     }
 
     Ok(())
