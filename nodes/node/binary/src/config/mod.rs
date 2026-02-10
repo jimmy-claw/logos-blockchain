@@ -165,37 +165,6 @@ pub struct HttpArgs {
 }
 
 #[derive(Parser, Debug, Clone)]
-pub struct TimeArgs {
-    #[clap(
-        long = "consensus-chain-start",
-        env = "CONSENSUS_CHAIN_START",
-        group = "start_time"
-    )]
-    chain_start_time: Option<i64>,
-    #[clap(long = "dev-mode-reset-chain-clock", group = "start_time")]
-    dev_mode_reset_chain_clock: bool,
-}
-
-pub enum ChainStartMode {
-    FromEnv(i64),
-    FromConfig,
-    Now,
-}
-
-impl TimeArgs {
-    #[must_use]
-    pub const fn to_mode(&self) -> ChainStartMode {
-        if self.dev_mode_reset_chain_clock {
-            ChainStartMode::Now
-        } else if let Some(ts) = self.chain_start_time {
-            ChainStartMode::FromEnv(ts)
-        } else {
-            ChainStartMode::FromConfig
-        }
-    }
-}
-
-#[derive(Parser, Debug, Clone)]
 pub struct DeploymentArgs {
     #[clap(long = "deployment", env = "DEPLOYMENT", default_value = DeploymentType::default())]
     deployment_type: DeploymentType,

@@ -191,19 +191,15 @@ cargo build --release
 
 ### Setting `chain_start_time` timestamp
 
-When running a node locally with a custom config or `config-one-node.yaml`, you may encounter the following error if the 
+When running a node locally with a custom deployment config, you may encounter the following error if the 
 configuration's start time is too far in the past:
 ```
 ERROR chain_leader: trying to propose a block for slot XXXX but epoch state is not available
 ```
 
-To resolve this, you must manually update the chain_start_time in the config file to a recent timestamp (ideally within 
-a few minutes of your current system time) before launching the node, **or use a command-line flag to start the node** 
-with the chain start time set to the current time:
+To resolve this, you must manually update the chain_start_time in the deployment config file to a recent timestamp (ideally within 
+a few minutes of your current system time) before launching the node.
 
-```bash
-logos-blockchain-node nodes/node/config-one-node.yaml --dev-mode-reset-chain-clock
-```
 
 #### Manually set chain start time in config
 
@@ -214,19 +210,16 @@ Bash
 date -u +"%Y-%m-%d %H:%M:%S.000000 +00:00:00"
 ```
 
-Open nodes/node/config-one-node.yaml and locate the time section. Replace the `chain_start_time` value with the 
+Open `nodes/node/standalone-deployment-config.yaml` and locate the `time` section. Replace the `chain_start_time` value with the 
 output from the command above:
-YAML
 
 ```bash
 time:
-  backend:
-    ntp_server: pool.ntp.org:123
-    # ... other settings ...
+  # ... other settings ...
   chain_start_time: 2026-01-07 10:45:00.000000 +00:00:00 # <--- Update this line
 ```
 
-Once updated, restart the node.
+Once updated, remove the `db` folder and restart the node.
 
 ### Running a Logos Blockchain Node
 
@@ -239,18 +232,6 @@ the configuration.
 docker run -v "/path/to/config.yml" -v "/path/to/global_params:global/params/path" logos-blockchain /etc/logos-blockchain/config.yml
 ```
 
-To use an example configuration located at `nodes/node/config.yaml`, first run the test that generates the random
-kzgrs file and then run the docker container with the appropriate config and global params:
-
-```bash
-cargo test --package logos-blockchain-kzgrs-backend write_random_kzgrs_params_to_file -- --ignored
-
-docker run -v "$(pwd)/nodes/node/config.yaml:/etc/logos-blockchain/config.yml" \
-  -v "$(pwd)/logos-blockchain-da/kzgrs-backend/kzgrs_test_params:/app/tests/kzgrs/kzgrs_test_params" \
-  logos-blockchain /etc/logos-blockchain/config.yml
-
-```
-
 #### Running Logos Blockchain Node locally
 
 When the node is built locally, it can be run with example config for one node network:
@@ -259,35 +240,11 @@ When the node is built locally, it can be run with example config for one node n
 cargo build --all-features --all-targets
 
 # Run node without connecting to any other node.
-target/debug/logos-blockchain-node nodes/node/config-one-node.yaml
+target/debug/logos-blockchain-node nodes/node/standalone-node-config.yaml
 ```
 
 Node stores its state inside the `db` directory. If there are any issues when restarting the node, please try removing 
 `db` directory.
-
-**Notes**
-
-- To use an example configuration located at `nodes/node/config.yaml`, first run the test that generates the 
-random kzgrs file (`kzgrs_test_params`), leave it in `./tests/kzgrs/kzgrs_test_params` or place it in a convenient 
-location:
-
-```bash
-cargo test --package logos-blockchain-kzgrs-backend write_random_kzgrs_params_to_file -- --ignored
-```
-
-- To run the Logos blockchain node directly from the command line, edit the `global_params_path:` key in `/path/to/config.yaml` to 
-point to the kzgrs file (`kzgrs_test_params`) and run with:
-
-```bash
-cargo run --package logos-blockchain-node -- /path/to/config.yaml
-```
-
-or copy the executable and run the binary directly:
-
-```bash
-./logos-blockchain-node /path/to/config.yaml
-```
-
 
 #### Running Logos Blockchain Node with integration test
 
