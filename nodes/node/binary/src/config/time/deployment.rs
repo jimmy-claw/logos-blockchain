@@ -2,6 +2,7 @@ use core::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use time::OffsetDateTime;
 
 use crate::config::deployment::WellKnownDeployment;
 
@@ -10,6 +11,7 @@ use crate::config::deployment::WellKnownDeployment;
 pub struct Settings {
     #[serde_as(as = "lb_utils::bounded_duration::MinimalBoundedDuration<1, SECOND>")]
     pub slot_duration: Duration,
+    pub chain_start_time: OffsetDateTime,
 }
 
 impl From<WellKnownDeployment> for Settings {
@@ -23,5 +25,7 @@ impl From<WellKnownDeployment> for Settings {
 const fn devnet_settings() -> Settings {
     Settings {
         slot_duration: Duration::from_secs(1),
+        // TODO: Change this to a proper date before devnet launch.
+        chain_start_time: OffsetDateTime::UNIX_EPOCH,
     }
 }

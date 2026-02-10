@@ -5,7 +5,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ::time::OffsetDateTime;
 use clap::{Parser, ValueEnum, builder::OsStr};
 use color_eyre::eyre::{Result, eyre};
 use lb_libp2p::{Multiaddr, ed25519::SecretKey};
@@ -59,8 +58,6 @@ pub struct CliArgs {
     /// Overrides http config.
     #[clap(flatten)]
     http: HttpArgs,
-    #[clap(flatten)]
-    time: TimeArgs,
     #[clap(flatten)]
     deployment: DeploymentArgs,
 }
@@ -284,7 +281,6 @@ impl UserConfig {
             http: http_args,
             network: network_args,
             blend: blend_args,
-            time: time_args,
             deployment: deployment_args,
             ..
         } = args;
@@ -292,7 +288,6 @@ impl UserConfig {
         update_network(&mut self.network, network_args)?;
         update_blend(&mut self.blend, blend_args)?;
         update_http(&mut self.http, http_args)?;
-        update_time(&mut self.time, &time_args)?;
 
         let deployment_settings = match deployment_args.deployment_type() {
             DeploymentType::WellKnown(well_known_deployment) => (*well_known_deployment).into(),
@@ -411,19 +406,6 @@ pub fn update_http(
         http.backend_settings.cors_origins = cors;
     }
 
-    Ok(())
-}
-
-pub fn update_time(time: &mut TimeConfig, time_args: &TimeArgs) -> Result<()> {
-    match time_args.to_mode() {
-        ChainStartMode::Now => {
-            time.chain_start_time = OffsetDateTime::now_utc();
-        }
-        ChainStartMode::FromEnv(ts) => {
-            time.chain_start_time = OffsetDateTime::from_unix_timestamp(ts)?;
-        }
-        ChainStartMode::FromConfig => {}
-    }
     Ok(())
 }
 
