@@ -34,22 +34,7 @@ impl ServiceConfig {
         lb_chain_network_service::ChainNetworkSettings<PeerId, LibP2pAdapterSettings>,
         lb_chain_leader_service::LeaderSettings<(), Libp2pBroadcastSettings>,
     ) {
-        let epoch_schedule = u64::from(
-            self.deployment.epoch_config.epoch_period_nonce_buffer.get()
-                + self
-                    .deployment
-                    .epoch_config
-                    .epoch_period_nonce_stabilization
-                    .get()
-                + self
-                    .deployment
-                    .epoch_config
-                    .epoch_stake_distribution_stabilization
-                    .get(),
-        );
-        // Session duration is given by epoch schedule * `k` (security parameter).
-        let session_duration_in_blocks =
-            epoch_schedule * u64::from(self.deployment.security_param.get());
+        let session_duration = self.deployment.epoch_length();
         let ledger_config = lb_ledger::Config {
             consensus_config: self.deployment.consensus_config(),
             epoch_config: EpochConfig {
@@ -74,7 +59,7 @@ impl ServiceConfig {
                             (
                                 service_type,
                                 ServiceParameters {
-                                    session_duration: session_duration_in_blocks,
+                                    session_duration,
                                     inactivity_period: service_params.inactivity_period,
                                     lock_period: service_params.lock_period,
                                     retention_period: service_params.retention_period,
@@ -93,7 +78,7 @@ impl ServiceConfig {
                             .message_frequency_per_round,
                         minimum_network_size: blend_deployment.common.minimum_network_size,
                         num_blend_layers: blend_deployment.common.num_blend_layers,
-                        rounds_per_session: blend_deployment.common.timing.rounds_per_session,
+                        rounds_per_session: session_duration.try_into().unwrap(),
                         data_replication_factor: blend_deployment.common.data_replication_factor,
                         activity_threshold_sensitivity: blend_deployment
                             .core

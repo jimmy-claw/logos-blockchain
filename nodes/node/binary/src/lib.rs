@@ -138,6 +138,9 @@ pub struct LogosBlockchain {
 }
 
 pub fn run_node_from_config(config: RunConfig) -> Result<Overwatch<RuntimeServiceId>, DynError> {
+    let epoch_length = config.deployment.cryptarchia.epoch_length();
+    let slot_duration = config.deployment.time.slot_duration;
+
     let time_service_config = TimeConfig {
         user: config.user.time,
         deployment: config.deployment.time,
@@ -154,7 +157,7 @@ pub fn run_node_from_config(config: RunConfig) -> Result<Overwatch<RuntimeServic
         user: config.user.blend,
         deployment: config.deployment.blend,
     }
-    .into();
+    .into_blend_settings(epoch_length.try_into().unwrap(), slot_duration);
 
     let mempool_service_config = MempoolConfig {
         user: config.user.mempool,

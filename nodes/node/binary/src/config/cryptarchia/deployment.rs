@@ -35,10 +35,27 @@ pub struct EpochConfig {
     pub epoch_period_nonce_stabilization: NonZero<u8>,
 }
 
+impl EpochConfig {
+    const fn as_inner(self) -> lb_cryptarchia_engine::EpochConfig {
+        lb_cryptarchia_engine::EpochConfig {
+            epoch_stake_distribution_stabilization: self.epoch_stake_distribution_stabilization,
+            epoch_period_nonce_buffer: self.epoch_period_nonce_buffer,
+            epoch_period_nonce_stabilization: self.epoch_period_nonce_stabilization,
+        }
+    }
+}
+
 impl Settings {
     #[must_use]
     pub const fn consensus_config(&self) -> ConsensusConfig {
         ConsensusConfig::new(self.security_param, slot_activation_coefficient())
+    }
+
+    #[must_use]
+    pub const fn epoch_length(&self) -> u64 {
+        self.epoch_config
+            .as_inner()
+            .epoch_length(self.consensus_config().base_period_length())
     }
 }
 

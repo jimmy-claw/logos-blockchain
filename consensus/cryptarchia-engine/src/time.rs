@@ -1,8 +1,4 @@
-use std::{
-    num::{NonZero, NonZeroU64},
-    ops::Add,
-    time::Duration,
-};
+use std::{num::NonZero, ops::Add, time::Duration};
 
 #[cfg(feature = "serde")]
 use lb_utils::bounded_duration::{MinimalBoundedDuration, SECOND};
@@ -147,18 +143,12 @@ pub struct EpochConfig {
 }
 
 impl EpochConfig {
-    pub fn epoch_length(&self, base_period_length: NonZero<u64>) -> u64 {
-        [
-            u64::from(NonZeroU64::from(
-                self.epoch_stake_distribution_stabilization,
-            )),
-            u64::from(NonZeroU64::from(self.epoch_period_nonce_buffer)),
-            u64::from(NonZeroU64::from(self.epoch_period_nonce_stabilization)),
-        ]
-        .into_iter()
-        .reduce(u64::saturating_add)
-        .unwrap_or(0)
-        .saturating_mul(base_period_length.get())
+    #[must_use]
+    pub const fn epoch_length(&self, base_period_length: NonZero<u64>) -> u64 {
+        let epoch_schedule = (self.epoch_stake_distribution_stabilization.get() as u64)
+            .saturating_add(self.epoch_period_nonce_buffer.get() as u64)
+            .saturating_add(self.epoch_period_nonce_stabilization.get() as u64);
+        epoch_schedule.saturating_mul(base_period_length.get())
     }
 
     #[must_use]

@@ -1,4 +1,4 @@
-use core::{num::NonZeroU64, time::Duration};
+use core::num::NonZeroU64;
 
 use lb_libp2p::protocol_name::StreamProtocol;
 use lb_utils::math::NonNegativeF64;
@@ -27,15 +27,8 @@ pub struct CommonSettings {
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TimingSettings {
-    /// `S`: length of a session in terms of expected rounds (on average).
-    pub rounds_per_session: NonZeroU64,
     /// `|I|`: length of an interval in terms of rounds.
     pub rounds_per_interval: NonZeroU64,
-    #[serde_as(
-        as = "lb_utils::bounded_duration::MinimalBoundedDuration<1, lb_utils::bounded_duration::SECOND>"
-    )]
-    /// Duration of a round.
-    pub round_duration: Duration,
     pub rounds_per_observation_window: NonZeroU64,
     /// Session transition period in rounds.
     pub rounds_per_session_transition_period: NonZeroU64,
@@ -86,10 +79,8 @@ fn devnet_settings() -> Settings {
             protocol_name: StreamProtocol::new("/logos-blockchain-devnet/blend/1.0.0"),
             timing: TimingSettings {
                 epoch_transition_period_in_slots: 20.try_into().unwrap(),
-                round_duration: Duration::from_secs(1),
                 rounds_per_interval: 10.try_into().unwrap(),
                 rounds_per_observation_window: 20.try_into().unwrap(),
-                rounds_per_session: 2_000.try_into().unwrap(),
                 rounds_per_session_transition_period: 20.try_into().unwrap(),
             },
         },

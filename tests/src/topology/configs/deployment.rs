@@ -38,12 +38,8 @@ pub fn e2e_deployment_settings_with_genesis_tx(genesis_tx: GenesisTx) -> Deploym
                 num_blend_layers: NonZeroU64::try_from(3)
                     .expect("Number of blend layers cannot be zero."),
                 timing: TimingSettings {
-                    round_duration: Duration::from_secs(1),
                     rounds_per_interval: NonZeroU64::try_from(30u64)
                         .expect("Rounds per interval cannot be zero."),
-                    // (21,600 blocks * 30s per block) / 1s per round = 648,000 rounds
-                    rounds_per_session: NonZeroU64::try_from(648_000u64)
-                        .expect("Rounds per session cannot be zero."),
                     rounds_per_observation_window: NonZeroU64::try_from(30u64)
                         .expect("Rounds per observation window cannot be zero."),
                     rounds_per_session_transition_period: NonZeroU64::try_from(30u64)
