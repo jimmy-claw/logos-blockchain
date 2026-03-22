@@ -1,0 +1,44 @@
+# Makefile for zone_test — integration test for zone C bindings
+#
+# Usage:
+#   make              — build the test binary
+#   make run          — build and run against local node
+#   make run-inscribe — build and run with inscription (needs LOGOS_SIGNING_KEY)
+#   make clean
+
+CARGO_TARGET ?= target/release
+CRATE_DIR    ?= .
+
+LIB     = $(CARGO_TARGET)/liblogos_blockchain_c.so
+HEADER  = logos_blockchain.h
+
+CC      = gcc
+CFLAGS  = -Wall -Wextra -I$(CRATE_DIR)
+LDFLAGS = -L$(CARGO_TARGET) -llogos_blockchain_c -Wl,-rpath,$(abspath $(CARGO_TARGET))
+
+NODE_URL   ?= http://localhost:8080
+CHANNEL_ID ?= 0000000000000000000000000000000000000000000000000000000000000001
+
+.PHONY: all build run run-inscribe clean
+
+all: zone_test
+
+$(LIB) $(HEADER):
+	cargo build --release -p logos-blockchain-c
+
+zone_test: zone_test.c $(LIB) $(HEADER)
+	$(CC) $(CFLAGS) zone_test.c -o zone_test $(LDFLAGS)
+
+run: zone_test
+	LOGOS_NODE_URL=$(NODE_URL) LOGOS_CHANNEL_ID=$(CHANNEL_ID) ./zone_test
+
+run-inscribe: zone_test
+	@if [ -z "$(LOGOS_SIGNING_KEY)" ]; then \
+		echo "Error: set LOGOS_SIGNING_KEY=<ed25519-private-key-hex>"; exit 1; fi
+	LOGOS_NODE_URL=$(NODE_URL) \
+	LOGOS_CHANNEL_ID=$(CHANNEL_ID) \
+	LOGOS_SIGNING_KEY=$(LOGOS_SIGNING_KEY) \
+	./zone_test
+
+clean:
+	rm -f zone_test
