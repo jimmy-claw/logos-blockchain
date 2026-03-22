@@ -4041,8 +4041,10 @@ name = "logos-blockchain-c"
 version = "0.1.0"
 dependencies = [
  "cbindgen",
+ "hex",
  "logos-blockchain-api-service",
  "logos-blockchain-chain-service",
+ "logos-blockchain-common-http-client",
  "logos-blockchain-core",
  "logos-blockchain-cryptarchia-engine",
  "logos-blockchain-groth16",
@@ -4051,6 +4053,7 @@ dependencies = [
  "logos-blockchain-wallet-service",
  "num-bigint",
  "overwatch",
+ "reqwest",
  "serde_json",
  "tokio",
 ]

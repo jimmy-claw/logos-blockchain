@@ -10,8 +10,10 @@ repository  = { workspace = true }
 version     = { workspace = true }
 
 [dependencies]
+hex                           = { default-features = false, features = ["alloc"], version = "0.4" }
 lb-api-service                = { workspace = true }
 lb-chain-service              = { workspace = true }
+lb-common-http-client         = { workspace = true }
 lb-core                       = { workspace = true }
 lb-cryptarchia-engine         = { workspace = true }
 lb-groth16                    = { workspace = true }
@@ -20,6 +22,7 @@ lb-node                       = { default-features = true, workspace = true }
 lb-wallet-service             = { workspace = true }
 num-bigint                    = { default-features = false, version = "0.4" }
 overwatch                     = { workspace = true }
+reqwest                       = { workspace = true }
 serde_json                    = { workspace = true }
 tokio                         = { default-features = false, features = ["rt-multi-thread"], workspace = true }
 

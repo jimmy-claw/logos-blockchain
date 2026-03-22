@@ -5,6 +5,7 @@ pub(crate) mod result;
 mod subscriptions;
 pub(crate) mod types;
 pub mod wallet;
+pub mod zone;
 
 pub(crate) use memory::free;
 pub use memory::free_cstring;
